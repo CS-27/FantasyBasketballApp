@@ -15,9 +15,9 @@ class FreeAgentFinder:
         self.team_analyzer = team_analyzer
         self._free_agents_cache = {}
 
-    def get_free_agents(self, position=None):
+    def get_free_agents(self, position=None, with_stats=True):
         """Fetch available free agents, optionally filtered by position."""
-        cache_key = position or 'all'
+        cache_key = f"{position or 'all'}_{'stats' if with_stats else 'nostats'}"
 
         if cache_key in self._free_agents_cache:
             return self._free_agents_cache[cache_key]
@@ -41,23 +41,64 @@ class FreeAgentFinder:
                         pass
                 fas = all_fas
 
+            # Fetch stats for all free agents
+            if with_stats and fas:
+                fas = self._fetch_fa_stats(fas)
+
             self._free_agents_cache[cache_key] = fas
             return fas
         except Exception as e:
             print(f"Error fetching free agents: {e}")
             return []
 
+    def _fetch_fa_stats(self, free_agents):
+        """Fetch stats for a list of free agents."""
+        player_ids = [fa.get('player_id') for fa in free_agents if fa.get('player_id')]
+
+        if not player_ids:
+            return free_agents
+
+        # Fetch stats in batches (API may have limits)
+        stats_map = {}
+        batch_size = 25
+
+        try:
+            for i in range(0, len(player_ids), batch_size):
+                batch_ids = player_ids[i:i + batch_size]
+                batch_stats = self.league.player_stats(batch_ids, 'season')
+                for player in batch_stats:
+                    pid = player.get('player_id')
+                    if pid:
+                        stats_map[pid] = player
+        except Exception as e:
+            print(f"Warning: Could not fetch FA stats: {e}")
+            return free_agents
+
+        # Merge stats into free agents
+        fas_with_stats = []
+        for fa in free_agents:
+            pid = fa.get('player_id')
+            fa_data = dict(fa)
+            if pid in stats_map:
+                fa_data['stats'] = stats_map[pid]
+            fas_with_stats.append(fa_data)
+
+        return fas_with_stats
+
     def get_player_stats(self, player):
         """Extract stats from a player object."""
-        stats = {}
-        player_stats = player.get('player_stats', {})
+        # Stats are now stored directly in the 'stats' key
+        stats = player.get('stats', {})
 
-        if isinstance(player_stats, dict):
-            raw_stats = player_stats.get('stats', {})
-            if isinstance(raw_stats, dict):
-                stats = raw_stats
+        # The stats dict contains the player info plus stat values
+        # Extract just the stat categories
+        categories = self.team_analyzer.league_analyzer.get_category_names()
+        result = {}
+        for cat in categories:
+            if cat in stats:
+                result[cat] = stats[cat]
 
-        return stats
+        return result
 
     def score_free_agent(self, player, weaknesses, weakness_weights):
         """Score a free agent based on how well they address team weaknesses."""

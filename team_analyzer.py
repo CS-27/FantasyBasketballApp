@@ -12,6 +12,7 @@ class TeamAnalyzer:
         self.league = league
         self.league_analyzer = league_analyzer
         self._roster = None
+        self._roster_with_stats = None
 
     @property
     def roster(self):
@@ -19,6 +20,41 @@ class TeamAnalyzer:
         if self._roster is None:
             self._roster = self.team.roster()
         return self._roster
+
+    def get_roster_with_stats(self):
+        """Get roster with player stats fetched."""
+        if self._roster_with_stats is not None:
+            return self._roster_with_stats
+
+        roster = self.roster
+        player_ids = [p.get('player_id') for p in roster if p.get('player_id')]
+
+        # Fetch stats for all players
+        player_stats_map = {}
+        if player_ids:
+            try:
+                # Fetch season stats for all roster players
+                stats_data = self.league.player_stats(player_ids, 'season')
+                for player in stats_data:
+                    pid = player.get('player_id')
+                    if pid:
+                        # Stats are directly in the player dict (FG%, PTS, etc.)
+                        player_stats_map[pid] = player
+            except Exception as e:
+                print(f"Warning: Could not fetch player stats: {e}")
+
+        # Merge stats into roster
+        roster_with_stats = []
+        for player in roster:
+            pid = player.get('player_id')
+            player_data = dict(player)
+            if pid in player_stats_map:
+                # Copy all stat fields directly
+                player_data['stats'] = player_stats_map[pid]
+            roster_with_stats.append(player_data)
+
+        self._roster_with_stats = roster_with_stats
+        return roster_with_stats
 
     def get_roster_players(self):
         """Get list of players on the roster."""
@@ -38,39 +74,59 @@ class TeamAnalyzer:
 
     def get_team_totals(self):
         """Aggregate season stats for the team's roster."""
-        roster = self.roster
+        roster = self.get_roster_with_stats()
         categories = self.league_analyzer.get_category_names()
 
         totals = {cat: 0 for cat in categories}
         player_count = 0
-        games_played = 0
+
+        # For percentage calculations, track totals
+        fg_made = 0
+        fg_att = 0
+        ft_made = 0
+        ft_att = 0
 
         for player in roster:
-            player_stats = player.get('player_stats', {})
-            stats = player_stats.get('stats', {})
+            stats = player.get('stats', {})
 
             if stats:
                 player_count += 1
-                gp = float(stats.get('GP', 0))
-                games_played += gp
 
                 for cat in categories:
-                    if cat in stats:
+                    value = stats.get(cat)
+                    if value is not None:
                         try:
-                            value = float(stats[cat])
-                            # For percentages, we need weighted average later
-                            if cat in ['FG%', 'FT%']:
-                                totals[cat] += value * gp
-                            else:
+                            value = float(value)
+                            # Skip percentages for now, calculate from FGM/A and FTM/A
+                            if cat not in ['FG%', 'FT%']:
                                 totals[cat] += value
                         except (ValueError, TypeError):
                             pass
 
-        # Calculate weighted averages for percentages
-        if games_played > 0:
-            for cat in ['FG%', 'FT%']:
-                if cat in totals:
-                    totals[cat] = totals[cat] / games_played
+                # Parse FGM/A and FTM/A for accurate percentage calculation
+                fgma = stats.get('FGM/A', '')
+                if fgma and '/' in str(fgma):
+                    parts = str(fgma).split('/')
+                    try:
+                        fg_made += float(parts[0])
+                        fg_att += float(parts[1])
+                    except (ValueError, IndexError):
+                        pass
+
+                ftma = stats.get('FTM/A', '')
+                if ftma and '/' in str(ftma):
+                    parts = str(ftma).split('/')
+                    try:
+                        ft_made += float(parts[0])
+                        ft_att += float(parts[1])
+                    except (ValueError, IndexError):
+                        pass
+
+        # Calculate team percentages from totals
+        if fg_att > 0:
+            totals['FG%'] = fg_made / fg_att
+        if ft_att > 0:
+            totals['FT%'] = ft_made / ft_att
 
         return totals
 
@@ -82,7 +138,8 @@ class TeamAnalyzer:
         if team_key in team_stats:
             return team_stats[team_key].get('stats', {})
 
-        return {}
+        # Fall back to calculating from roster
+        return self.get_team_totals()
 
     def get_category_rankings(self):
         """Rank team in each category vs league."""
@@ -153,7 +210,7 @@ class TeamAnalyzer:
 
     def get_roster_analysis(self):
         """Get per-player contribution breakdown."""
-        roster = self.roster
+        roster = self.get_roster_with_stats()
         categories = self.league_analyzer.get_category_names()
 
         analysis = []
@@ -167,8 +224,8 @@ class TeamAnalyzer:
                 'stats': {}
             }
 
-            player_stats = player.get('player_stats', {})
-            stats = player_stats.get('stats', {})
+            # Stats are in the 'stats' key which contains player info + stat values
+            stats = player.get('stats', {})
 
             for cat in categories:
                 if cat in stats:

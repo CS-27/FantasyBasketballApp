@@ -88,23 +88,35 @@ def select_league(game):
         print("No fantasy basketball leagues found for this season.")
         return None
 
-    if len(league_ids) == 1:
-        league_id = league_ids[0]
+    # Sort by game key (higher = more recent season)
+    # Format is "XXX.l.YYYYY" where XXX is game key
+    sorted_ids = sorted(league_ids, key=lambda x: int(x.split('.')[0]), reverse=True)
+
+    if len(sorted_ids) == 1:
+        league_id = sorted_ids[0]
         print(f"Found league: {league_id}")
         return game.to_league(league_id)
 
-    print("\nAvailable Leagues:")
-    for i, lid in enumerate(league_ids, 1):
-        print(f"  {i}. {lid}")
+    # Auto-select most recent, but show options
+    print("\nAvailable Leagues (sorted by season, newest first):")
+    for i, lid in enumerate(sorted_ids, 1):
+        game_key = lid.split('.')[0]
+        marker = " <- Current season" if i == 1 else ""
+        print(f"  {i}. {lid} (game key: {game_key}){marker}")
+
+    print(f"\nPress Enter to use current season ({sorted_ids[0]}), or enter a number:")
 
     while True:
         try:
-            choice = int(input("\nSelect league number: "))
-            if 1 <= choice <= len(league_ids):
-                return game.to_league(league_ids[choice - 1])
+            choice = input("Selection: ").strip()
+            if choice == "":
+                return game.to_league(sorted_ids[0])
+            choice = int(choice)
+            if 1 <= choice <= len(sorted_ids):
+                return game.to_league(sorted_ids[choice - 1])
             print("Invalid selection. Try again.")
         except ValueError:
-            print("Please enter a number.")
+            print("Please enter a number or press Enter.")
 
 
 def get_user_team(league):

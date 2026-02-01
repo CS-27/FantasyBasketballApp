@@ -13,6 +13,7 @@ class LeagueAnalyzer:
         self._standings = None
         self._teams = None
         self._stat_categories = None
+        self._team_stats_cache = None
 
     @property
     def settings(self):
@@ -50,34 +51,93 @@ class LeagueAnalyzer:
             self._teams = self.league.teams()
         return self._teams
 
+    def _fetch_team_roster_stats(self, team_key):
+        """Fetch roster and player stats for a specific team."""
+        categories = self.get_category_names()
+        totals = {cat: 0 for cat in categories}
+
+        # Track for percentage calculations
+        fg_made = 0
+        fg_att = 0
+        ft_made = 0
+        ft_att = 0
+
+        try:
+            team = self.league.to_team(team_key)
+            roster = team.roster()
+
+            if not roster:
+                return totals
+
+            # Get player IDs
+            player_ids = [p.get('player_id') for p in roster if p.get('player_id')]
+
+            if not player_ids:
+                return totals
+
+            # Fetch stats for all players
+            player_stats = self.league.player_stats(player_ids, 'season')
+
+            for player in player_stats:
+                for cat in categories:
+                    value = player.get(cat)
+                    if value is not None and cat not in ['FG%', 'FT%']:
+                        try:
+                            totals[cat] += float(value)
+                        except (ValueError, TypeError):
+                            pass
+
+                # Parse FGM/A and FTM/A
+                fgma = player.get('FGM/A', '')
+                if fgma and '/' in str(fgma):
+                    parts = str(fgma).split('/')
+                    try:
+                        fg_made += float(parts[0])
+                        fg_att += float(parts[1])
+                    except (ValueError, IndexError):
+                        pass
+
+                ftma = player.get('FTM/A', '')
+                if ftma and '/' in str(ftma):
+                    parts = str(ftma).split('/')
+                    try:
+                        ft_made += float(parts[0])
+                        ft_att += float(parts[1])
+                    except (ValueError, IndexError):
+                        pass
+
+            # Calculate percentages
+            if fg_att > 0:
+                totals['FG%'] = fg_made / fg_att
+            if ft_att > 0:
+                totals['FT%'] = ft_made / ft_att
+
+        except Exception as e:
+            print(f"Warning: Could not fetch stats for team {team_key}: {e}")
+
+        return totals
+
     def get_team_stats(self):
         """Get stats for all teams in the league."""
+        if self._team_stats_cache is not None:
+            return self._team_stats_cache
+
         teams = self.get_teams()
         team_stats = {}
 
-        for team_key, team_data in teams.items():
-            team_name = team_data.get('name', team_key)
-            # Try to get team stats from the API
-            try:
-                # The stats might be in team_data directly or need separate fetch
-                stats = team_data.get('stats', {})
-                if not stats:
-                    # Try to get from standings
-                    standings = self.get_standings()
-                    for standing in standings:
-                        if standing.get('team_key') == team_key:
-                            stats = standing.get('stats', {})
-                            break
-                team_stats[team_key] = {
-                    'name': team_name,
-                    'stats': stats
-                }
-            except Exception as e:
-                team_stats[team_key] = {
-                    'name': team_name,
-                    'stats': {}
-                }
+        print("Fetching team stats (this may take a moment)...")
 
+        for i, (team_key, team_data) in enumerate(teams.items()):
+            team_name = team_data.get('name', team_key)
+            print(f"  Loading {team_name}... ({i+1}/{len(teams)})")
+
+            stats = self._fetch_team_roster_stats(team_key)
+            team_stats[team_key] = {
+                'name': team_name,
+                'stats': stats
+            }
+
+        self._team_stats_cache = team_stats
         return team_stats
 
     def calculate_league_averages(self, team_stats):
