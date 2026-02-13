@@ -1,0 +1,89 @@
+<!-- Category Rankings Table -->
+<div class="mb-8">
+    <h3 class="text-lg font-semibold text-white mb-4">Category Rankings</h3>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="border-b border-slate-600">
+                    <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">Category</th>
+                    <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider text-center">Value</th>
+                    <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider text-center">Rank</th>
+                    <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider text-center">Status</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700">
+                {% for cat, data in rankings.items() %}
+                <tr class="hover:bg-slate-700/50 transition-colors">
+                    <td class="px-4 py-3 font-medium text-white">{{ cat }}</td>
+                    <td class="px-4 py-3 text-center text-gray-300">{{ data.value }}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold
+                            {% if data.rank <= 3 %}
+                                bg-green-600/30 text-green-300
+                            {% elif data.rank >= data.total_teams - 2 %}
+                                bg-red-600/30 text-red-300
+                            {% else %}
+                                bg-yellow-600/20 text-yellow-300
+                            {% endif %}
+                        ">
+                            {{ data.rank }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3 text-center">
+                        {% if data.rank <= 3 %}
+                            <span class="inline-block bg-green-600/20 text-green-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-green-600/30">STRENGTH</span>
+                        {% elif data.rank >= data.total_teams - 2 %}
+                            <span class="inline-block bg-red-600/20 text-red-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-red-600/30">WEAKNESS</span>
+                        {% else %}
+                            <span class="inline-block bg-slate-600/30 text-gray-400 text-xs font-semibold px-2.5 py-1 rounded-full border border-slate-600/30">AVERAGE</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Strengths and Weaknesses Summary -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Strengths -->
+    <div class="bg-green-900/10 rounded-xl p-5 border border-green-700/30">
+        <h4 class="text-sm font-semibold text-green-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"/>
+            </svg>
+            Strengths
+        </h4>
+        <div class="flex flex-wrap gap-2">
+            {% for cat in strengths %}
+            <span class="bg-green-600/20 text-green-300 text-sm font-medium px-3 py-1 rounded-full border border-green-600/30">
+                {{ cat.category }}
+            </span>
+            {% endfor %}
+            {% if not strengths %}
+            <span class="text-gray-500 text-sm">No clear strengths identified</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Weaknesses -->
+    <div class="bg-red-900/10 rounded-xl p-5 border border-red-700/30">
+        <h4 class="text-sm font-semibold text-red-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+            </svg>
+            Weaknesses
+        </h4>
+        <div class="flex flex-wrap gap-2">
+            {% for cat in weaknesses %}
+            <span class="bg-red-600/20 text-red-300 text-sm font-medium px-3 py-1 rounded-full border border-red-600/30">
+                {{ cat.category }}
+            </span>
+            {% endfor %}
+            {% if not weaknesses %}
+            <span class="text-gray-500 text-sm">No clear weaknesses identified</span>
+            {% endif %}
+        </div>
+    </div>
+</div>

@@ -1,0 +1,45 @@
+<div class="overflow-x-auto">
+    <table class="w-full text-left">
+        <thead>
+            <tr class="border-b border-slate-600">
+                <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">Rank</th>
+                <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">Team</th>
+                <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider text-center">W</th>
+                <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider text-center">L</th>
+                <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider text-center">T</th>
+            </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-700">
+            {% for team in standings %}
+            <tr class="
+                {% if team.rank is number and team.rank <= 3 %}
+                    bg-green-900/20 hover:bg-green-900/30
+                {% elif team.rank is number and team.rank >= 8 %}
+                    bg-red-900/20 hover:bg-red-900/30
+                {% else %}
+                    hover:bg-slate-700/50
+                {% endif %}
+                transition-colors
+            ">
+                <td class="px-4 py-3">
+                    <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold
+                        {% if team.rank is number and team.rank <= 3 %}
+                            bg-green-600/30 text-green-300
+                        {% elif team.rank is number and team.rank >= 8 %}
+                            bg-red-600/30 text-red-300
+                        {% else %}
+                            bg-slate-600/50 text-gray-300
+                        {% endif %}
+                    ">
+                        {{ team.rank }}
+                    </span>
+                </td>
+                <td class="px-4 py-3 font-medium text-white">{{ team.name }}</td>
+                <td class="px-4 py-3 text-center text-green-400 font-medium">{{ team.wins }}</td>
+                <td class="px-4 py-3 text-center text-red-400 font-medium">{{ team.losses }}</td>
+                <td class="px-4 py-3 text-center text-gray-400">{{ team.ties }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>

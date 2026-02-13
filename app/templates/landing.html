@@ -1,0 +1,162 @@
+{% extends "base.html" %}
+
+{% block title %}Fantasy Basketball Analyzer - Dominate Your League{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<div class="max-w-6xl mx-auto">
+    <div class="text-center py-16 sm:py-24">
+        <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight">
+            <span class="block text-white">Dominate Your</span>
+            <span class="block bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">Fantasy Basketball League</span>
+        </h1>
+        <p class="mt-6 max-w-2xl mx-auto text-lg sm:text-xl text-gray-400">
+            AI-powered analysis of your team's strengths, weaknesses, and the smartest free agent pickups to climb the standings.
+        </p>
+        <div class="mt-10">
+            <a href="/auth/login" class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold text-lg px-8 py-4 rounded-xl shadow-lg shadow-purple-900/30 transition-all hover:scale-105">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                Connect with Yahoo Fantasy
+            </a>
+        </div>
+    </div>
+
+    <!-- Feature Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pb-16">
+        <!-- Team Analysis -->
+        <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-lg hover:border-purple-500/50 transition-colors">
+            <div class="w-12 h-12 bg-purple-600/20 rounded-lg flex items-center justify-center mb-4">
+                <svg class="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">Team Analysis</h3>
+            <p class="text-gray-400">Instantly see your category strengths and weaknesses across all 10 stats. Know exactly where you dominate and where you need help.</p>
+        </div>
+
+        <!-- League Intelligence -->
+        <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-lg hover:border-blue-500/50 transition-colors">
+            <div class="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center mb-4">
+                <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">League Intelligence</h3>
+            <p class="text-gray-400">Compare your roster against every opponent in your league. See matchup advantages and plan your weekly strategy.</p>
+        </div>
+
+        <!-- Smart Pickups -->
+        <div class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-lg hover:border-green-500/50 transition-colors relative overflow-hidden">
+            <div class="absolute top-3 right-3">
+                <span class="text-xs bg-purple-600 text-white px-2 py-0.5 rounded-full font-semibold">PRO</span>
+            </div>
+            <div class="w-12 h-12 bg-green-600/20 rounded-lg flex items-center justify-center mb-4">
+                <svg class="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
+                </svg>
+            </div>
+            <h3 class="text-xl font-semibold text-white mb-2">Smart Pickups</h3>
+            <p class="text-gray-400">AI-recommended free agent pickups tailored to your team's weaknesses. Never miss a waiver wire gem again.</p>
+        </div>
+    </div>
+
+    <!-- Pricing Section -->
+    <div class="pb-20">
+        <h2 class="text-3xl font-bold text-center text-white mb-12">Choose Your Plan</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
+            <!-- Free Tier -->
+            <div class="bg-slate-800 rounded-xl p-8 border border-slate-700 shadow-lg">
+                <h3 class="text-lg font-semibold text-gray-400 uppercase tracking-wider">Free</h3>
+                <div class="mt-4 flex items-baseline gap-1">
+                    <span class="text-4xl font-extrabold text-white">$0</span>
+                    <span class="text-gray-400">/month</span>
+                </div>
+                <ul class="mt-8 space-y-3">
+                    <li class="flex items-center gap-3 text-gray-300">
+                        <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        League standings
+                    </li>
+                    <li class="flex items-center gap-3 text-gray-300">
+                        <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Team analysis
+                    </li>
+                    <li class="flex items-center gap-3 text-gray-300">
+                        <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Category rankings
+                    </li>
+                    <li class="flex items-center gap-3 text-gray-500">
+                        <svg class="w-5 h-5 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        Free agent recommendations
+                    </li>
+                    <li class="flex items-center gap-3 text-gray-500">
+                        <svg class="w-5 h-5 text-gray-600 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        Pickup suggestions
+                    </li>
+                </ul>
+                <a href="/auth/login" class="mt-8 block w-full text-center bg-slate-700 hover:bg-slate-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors">
+                    Get Started
+                </a>
+            </div>
+
+            <!-- Premium Tier -->
+            <div class="bg-gradient-to-b from-purple-900/40 to-slate-800 rounded-xl p-8 border border-purple-500/50 shadow-lg shadow-purple-900/20 relative">
+                <div class="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <span class="bg-gradient-to-r from-purple-600 to-blue-600 text-white text-sm font-semibold px-4 py-1 rounded-full">RECOMMENDED</span>
+                </div>
+                <h3 class="text-lg font-semibold text-purple-300 uppercase tracking-wider">Premium</h3>
+                <div class="mt-4 flex items-baseline gap-1">
+                    <span class="text-4xl font-extrabold text-white">$4.99</span>
+                    <span class="text-gray-400">/month</span>
+                </div>
+                <ul class="mt-8 space-y-3">
+                    <li class="flex items-center gap-3 text-gray-300">
+                        <svg class="w-5 h-5 text-green-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Everything in Free
+                    </li>
+                    <li class="flex items-center gap-3 text-gray-300">
+                        <svg class="w-5 h-5 text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        AI free agent recommendations
+                    </li>
+                    <li class="flex items-center gap-3 text-gray-300">
+                        <svg class="w-5 h-5 text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Smart pickup suggestions
+                    </li>
+                    <li class="flex items-center gap-3 text-gray-300">
+                        <svg class="w-5 h-5 text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Head-to-head matchup analysis
+                    </li>
+                    <li class="flex items-center gap-3 text-gray-300">
+                        <svg class="w-5 h-5 text-purple-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
+                        Priority support
+                    </li>
+                </ul>
+                <a href="/auth/login" class="mt-8 block w-full text-center bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition-all hover:scale-[1.02] shadow-lg shadow-purple-900/30">
+                    Start Premium
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
