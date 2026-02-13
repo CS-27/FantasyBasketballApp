@@ -207,12 +207,16 @@ class LeagueAnalyzer:
         display_data = []
 
         for standing in standings:
+            outcome = standing.get('outcome_totals', {})
+            wins = int(outcome.get('wins', 0) or 0)
+            losses = int(outcome.get('losses', 0) or 0)
+            ties = int(outcome.get('ties', 0) or 0)
             display_data.append({
-                'rank': standing.get('rank', '-'),
+                'rank': int(standing.get('rank', 0) or 0),
                 'name': standing.get('name', 'Unknown'),
-                'wins': standing.get('outcome_totals', {}).get('wins', 0),
-                'losses': standing.get('outcome_totals', {}).get('losses', 0),
-                'ties': standing.get('outcome_totals', {}).get('ties', 0),
+                'wins': wins,
+                'losses': losses,
+                'ties': ties,
                 'points_for': standing.get('points_for', '-'),
                 'points_against': standing.get('points_against', '-'),
             })

@@ -1,0 +1,117 @@
+{% if error is defined and error %}
+<div class="bg-red-900/20 border border-red-700/30 rounded-xl p-6 text-center">
+    <p class="text-red-400">{{ error }}</p>
+</div>
+{% elif selected_category %}
+<!-- Single Category View -->
+<div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-700">
+        <h2 class="text-xl font-semibold text-white">{{ selected_category }} Rankings</h2>
+    </div>
+    <div class="overflow-x-auto">
+        <table class="w-full text-left">
+            <thead>
+                <tr class="border-b border-slate-600">
+                    <th class="px-6 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">Rank</th>
+                    <th class="px-6 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">Team</th>
+                    <th class="px-6 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider text-right">Value</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-700">
+                {% for team in rankings %}
+                <tr class="
+                    {% if team.rank <= 3 %}
+                        bg-green-900/20 hover:bg-green-900/30
+                    {% elif team.rank >= rankings|length - 2 %}
+                        bg-red-900/20 hover:bg-red-900/30
+                    {% else %}
+                        hover:bg-slate-700/50
+                    {% endif %}
+                    transition-colors
+                ">
+                    <td class="px-6 py-3">
+                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold
+                            {% if team.rank <= 3 %}
+                                bg-green-600/30 text-green-300
+                            {% elif team.rank >= rankings|length - 2 %}
+                                bg-red-600/30 text-red-300
+                            {% else %}
+                                bg-slate-600/50 text-gray-300
+                            {% endif %}
+                        ">
+                            {{ team.rank }}
+                        </span>
+                    </td>
+                    <td class="px-6 py-3 font-medium text-white">{{ team.name }}</td>
+                    <td class="px-6 py-3 text-right font-mono
+                        {% if team.rank <= 3 %}
+                            text-green-400
+                        {% elif team.rank >= rankings|length - 2 %}
+                            text-red-400
+                        {% else %}
+                            text-gray-300
+                        {% endif %}
+                    ">
+                        {% if selected_category in ["FG%", "FT%"] %}
+                            {{ "%.3f"|format(team.value) }}
+                        {% else %}
+                            {{ team.value|round(1) }}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% else %}
+<!-- All Categories Grid View -->
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% for cat_name, cat_rankings in rankings.items() %}
+    <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-700 bg-slate-750">
+            <h3 class="text-sm font-semibold text-purple-400 uppercase tracking-wider">{{ cat_name }}</h3>
+        </div>
+        <div class="px-4 py-2">
+            {% for team in cat_rankings %}
+            <div class="flex items-center justify-between py-1.5 text-sm
+                {% if not loop.last %}border-b border-slate-700/50{% endif %}
+            ">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold
+                        {% if team.rank <= 3 %}
+                            bg-green-600/30 text-green-300
+                        {% elif team.rank >= cat_rankings|length - 2 %}
+                            bg-red-600/30 text-red-300
+                        {% else %}
+                            bg-slate-600/50 text-gray-400
+                        {% endif %}
+                    ">
+                        {{ team.rank }}
+                    </span>
+                    <span class="
+                        {% if team.rank <= 3 %}
+                            text-green-400
+                        {% elif team.rank >= cat_rankings|length - 2 %}
+                            text-red-400
+                        {% else %}
+                            text-gray-300
+                        {% endif %}
+                    ">
+                        {{ team.name }}
+                    </span>
+                </div>
+                <span class="font-mono text-xs text-gray-400">
+                    {% if cat_name in ["FG%", "FT%"] %}
+                        {{ "%.3f"|format(team.value) }}
+                    {% else %}
+                        {{ team.value|round(1) }}
+                    {% endif %}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}

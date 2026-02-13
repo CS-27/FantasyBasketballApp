@@ -33,6 +33,7 @@ def _get_user_league(user: User, db: Session):
 
     # Discover leagues from Yahoo API
     ctx = WebOAuthContext(user.access_token, user.refresh_token)
+    ctx.refresh_if_needed(db, user)
     game = yfa.Game(ctx, "nba")
     league_ids = game.league_ids()
 
@@ -74,6 +75,7 @@ async def standings(
             )
 
         ctx = WebOAuthContext(user.access_token, user.refresh_token)
+        ctx.refresh_if_needed(db, user)
         game = yfa.Game(ctx, "nba")
         league = game.to_league(league_id)
 
@@ -126,6 +128,7 @@ async def team_data(
             )
 
         ctx = WebOAuthContext(user.access_token, user.refresh_token)
+        ctx.refresh_if_needed(db, user)
         game = yfa.Game(ctx, "nba")
         league = game.to_league(league_id)
         team = league.to_team(team_key)
@@ -174,7 +177,7 @@ async def rankings_page(
     request: Request,
     user: User | None = Depends(get_current_user),
 ):
-    """Category rankings page (placeholder)."""
+    """Category rankings page."""
     if not user:
         return RedirectResponse("/auth/login")
 
@@ -182,3 +185,53 @@ async def rankings_page(
         "rankings.html",
         {"request": request, "user": {"display_name": user.display_name, "subscription_status": user.subscription_status}},
     )
+
+
+@router.get("/rankings-data")
+async def rankings_data(
+    request: Request,
+    category: str = None,
+    user: User | None = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return category rankings partial (loaded via HTMX)."""
+    if not user:
+        return RedirectResponse("/auth/login")
+
+    try:
+        league_id, _ = _get_user_league(user, db)
+        if not league_id:
+            return templates.TemplateResponse(
+                "partials/category_rankings.html",
+                {"request": request, "categories": [], "selected_category": None, "rankings": {}, "error": "No league found."},
+            )
+
+        ctx = WebOAuthContext(user.access_token, user.refresh_token)
+        ctx.refresh_if_needed(db, user)
+        game = yfa.Game(ctx, "nba")
+        league = game.to_league(league_id)
+
+        analyzer = LeagueAnalyzer(league)
+        categories = analyzer.get_category_names()
+        team_stats = analyzer.get_team_stats()
+
+        if category:
+            rankings = analyzer.rank_teams_by_category(team_stats, category)
+        else:
+            rankings = analyzer.get_category_rankings_matrix(team_stats)
+
+        return templates.TemplateResponse(
+            "partials/category_rankings.html",
+            {
+                "request": request,
+                "categories": categories,
+                "selected_category": category,
+                "rankings": rankings,
+            },
+        )
+    except Exception as e:
+        logger.exception("Error fetching category rankings")
+        return templates.TemplateResponse(
+            "partials/category_rankings.html",
+            {"request": request, "categories": [], "selected_category": None, "rankings": {}, "error": str(e)},
+        )

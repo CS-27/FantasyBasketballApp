@@ -20,54 +20,87 @@ from app.config import (
 class WebOAuthContext:
     """OAuth context compatible with yahoo_fantasy_api.
 
-    yahoo_fantasy_api.Game accepts any object with a `.session` attribute
-    that is a requests.Session. This class provides exactly that, with
-    token refresh capability.
+    yahoo_fantasy_api expects an object with:
+    - .session: a requests.Session with auth headers
+    - .refresh_access_token(): returns dict with 'access_token'
+    - .oauth.get_session(token=...): returns a new Session
+
+    This class provides all of these so the library can auto-refresh
+    tokens when it gets a 401.
     """
 
     def __init__(self, access_token: str, refresh_token: str):
-        self._access_token = access_token
+        self.access_token = access_token
         self._refresh_token = refresh_token
+        self._session = self._build_session(access_token)
+        self.oauth = self  # Library calls self.sc.oauth.get_session()
+
+    def _build_session(self, token: str) -> requests.Session:
+        s = requests.Session()
+        s.headers.update({"Authorization": f"Bearer {token}"})
+        return s
 
     @property
     def session(self) -> requests.Session:
-        s = requests.Session()
-        s.headers.update({"Authorization": f"Bearer {self._access_token}"})
-        return s
+        return self._session
+
+    @session.setter
+    def session(self, value: requests.Session):
+        self._session = value
+
+    def get_session(self, token: str = None) -> requests.Session:
+        """Called by yahoo_fantasy_api as self.sc.oauth.get_session(token=...)."""
+        if token:
+            self._session = self._build_session(token)
+        return self._session
+
+    def refresh_access_token(self) -> dict:
+        """Refresh the token via Yahoo. Called by yahoo_fantasy_api on 401."""
+        return _do_token_refresh(self._refresh_token)
 
     def refresh_if_needed(self, db, user) -> None:
-        """Check token_expiry and refresh via Yahoo if expired, updating the DB."""
-        if user.token_expiry and datetime.now(timezone.utc) < user.token_expiry:
-            return
+        """Proactively refresh before API calls, updating the DB."""
+        if user.token_expiry:
+            expiry = user.token_expiry
+            if expiry.tzinfo is None:
+                expiry = expiry.replace(tzinfo=timezone.utc)
+            if datetime.now(timezone.utc) < expiry:
+                return
 
-        credentials = base64.b64encode(
-            f"{YAHOO_CLIENT_ID}:{YAHOO_CLIENT_SECRET}".encode()
-        ).decode()
+        data = _do_token_refresh(self._refresh_token)
 
-        with httpx.Client() as client:
-            resp = client.post(
-                YAHOO_TOKEN_URL,
-                headers={
-                    "Authorization": f"Basic {credentials}",
-                    "Content-Type": "application/x-www-form-urlencoded",
-                },
-                data={
-                    "grant_type": "refresh_token",
-                    "refresh_token": self._refresh_token,
-                },
-            )
-            resp.raise_for_status()
-            data = resp.json()
-
-        self._access_token = data["access_token"]
+        self.access_token = data["access_token"]
         self._refresh_token = data.get("refresh_token", self._refresh_token)
+        self._session = self._build_session(self.access_token)
 
-        user.access_token = self._access_token
+        user.access_token = self.access_token
         user.refresh_token = self._refresh_token
         user.token_expiry = datetime.now(timezone.utc) + timedelta(
             seconds=data["expires_in"]
         )
         db.commit()
+
+
+def _do_token_refresh(refresh_token: str) -> dict:
+    """Exchange a refresh token for a new access token."""
+    credentials = base64.b64encode(
+        f"{YAHOO_CLIENT_ID}:{YAHOO_CLIENT_SECRET}".encode()
+    ).decode()
+
+    with httpx.Client() as client:
+        resp = client.post(
+            YAHOO_TOKEN_URL,
+            headers={
+                "Authorization": f"Basic {credentials}",
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            data={
+                "grant_type": "refresh_token",
+                "refresh_token": refresh_token,
+            },
+        )
+        resp.raise_for_status()
+        return resp.json()
 
 
 def get_authorization_url(state: str) -> str:

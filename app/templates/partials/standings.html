@@ -1,20 +1,32 @@
+{% if error %}
+<div class="text-center py-8">
+    <p class="text-red-400">{{ error }}</p>
+</div>
+{% elif not standings %}
+<div class="text-center py-8">
+    <p class="text-gray-500">No standings data available.</p>
+</div>
+{% else %}
 <div class="overflow-x-auto">
-    <table class="w-full text-left">
+    <table class="w-full">
         <thead>
-            <tr class="border-b border-slate-600">
-                <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">Rank</th>
-                <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider">Team</th>
-                <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider text-center">W</th>
-                <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider text-center">L</th>
-                <th class="px-4 py-3 text-sm font-semibold text-gray-400 uppercase tracking-wider text-center">T</th>
+            <tr class="border-b border-slate-600 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                <th class="px-4 py-3 text-left w-16">#</th>
+                <th class="px-4 py-3 text-left">Team</th>
+                <th class="px-4 py-3 text-center w-16">W</th>
+                <th class="px-4 py-3 text-center w-16">L</th>
+                <th class="px-4 py-3 text-center w-16">T</th>
+                <th class="px-4 py-3 text-right w-20">Win %</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-slate-700">
+        <tbody class="divide-y divide-slate-700/50">
             {% for team in standings %}
+            {% set total = team.wins + team.losses + team.ties %}
+            {% set win_pct = (team.wins / total * 100) if total > 0 else 0 %}
             <tr class="
-                {% if team.rank is number and team.rank <= 3 %}
+                {% if team.rank <= 3 %}
                     bg-green-900/20 hover:bg-green-900/30
-                {% elif team.rank is number and team.rank >= 8 %}
+                {% elif team.rank >= 8 %}
                     bg-red-900/20 hover:bg-red-900/30
                 {% else %}
                     hover:bg-slate-700/50
@@ -23,9 +35,9 @@
             ">
                 <td class="px-4 py-3">
                     <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-sm font-bold
-                        {% if team.rank is number and team.rank <= 3 %}
+                        {% if team.rank <= 3 %}
                             bg-green-600/30 text-green-300
-                        {% elif team.rank is number and team.rank >= 8 %}
+                        {% elif team.rank >= 8 %}
                             bg-red-600/30 text-red-300
                         {% else %}
                             bg-slate-600/50 text-gray-300
@@ -38,8 +50,10 @@
                 <td class="px-4 py-3 text-center text-green-400 font-medium">{{ team.wins }}</td>
                 <td class="px-4 py-3 text-center text-red-400 font-medium">{{ team.losses }}</td>
                 <td class="px-4 py-3 text-center text-gray-400">{{ team.ties }}</td>
+                <td class="px-4 py-3 text-right text-gray-300 font-medium">{{ "%.1f"|format(win_pct) }}%</td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
 </div>
+{% endif %}

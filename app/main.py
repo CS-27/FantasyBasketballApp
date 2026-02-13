@@ -8,7 +8,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.config import SECRET_KEY
 from app.database import init_db, SessionLocal
 from app.models import User
-from app.routers import auth, dashboard, analysis
+from app.routers import auth, dashboard, analysis, premium
 
 app = FastAPI(title="Yahoo Fantasy Basketball Analyzer")
 
@@ -25,6 +25,7 @@ templates = Jinja2Templates(directory="app/templates")
 app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(analysis.router)
+app.include_router(premium.router)
 
 
 @app.on_event("startup")

@@ -89,6 +89,16 @@ async def callback(request: Request, code: str, state: str, db: Session = Depend
     return RedirectResponse(url="/dashboard")
 
 
+@router.get("/dev-login")
+async def dev_login(request: Request, db: Session = Depends(get_db)):
+    """Dev-only: log in as the dev user (imported from oauth2.json)."""
+    user = db.query(User).filter(User.yahoo_guid == "dev-user").first()
+    if not user:
+        return RedirectResponse(url="/?error=run_dev_setup")
+    request.session["user_id"] = user.id
+    return RedirectResponse(url="/dashboard")
+
+
 @router.get("/logout")
 async def logout(request: Request):
     """Clear session and redirect to landing page."""
