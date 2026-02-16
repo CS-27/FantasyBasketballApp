@@ -4,87 +4,78 @@
 
 {% block content %}
 <div class="max-w-6xl mx-auto">
-    <!-- Welcome Header -->
-    <div class="mb-8">
-        <h1 class="text-3xl font-bold text-white">Welcome back, {{ user.display_name }}</h1>
-        <p class="mt-1 text-gray-400">Here's your league overview.</p>
+
+    <!-- Welcome -->
+    <div style="margin-bottom: 32px;">
+        <h1 class="page-title">Welcome back, {{ user.display_name }}</h1>
+        <p class="body-text" style="margin-top: 4px;">Here's your league overview.</p>
     </div>
 
-    <!-- Quick Stats Cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-lg">
-            <p class="text-sm text-gray-400 mb-1">League Rank</p>
-            <p class="text-2xl font-bold text-white">--</p>
+    <!-- Quick Stats -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" style="margin-bottom: 32px;">
+        <div class="surface-card" style="padding: 20px;">
+            <p class="stat-label">League Rank</p>
+            <p class="stat-value">--</p>
         </div>
-        <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-lg">
-            <p class="text-sm text-gray-400 mb-1">Record</p>
-            <p class="text-2xl font-bold text-white">-- - --</p>
+        <div class="surface-card" style="padding: 20px;">
+            <p class="stat-label">Record</p>
+            <p class="stat-value">-- - --</p>
         </div>
-        <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-lg">
-            <p class="text-sm text-gray-400 mb-1">Strengths</p>
-            <p class="text-2xl font-bold text-green-400">--</p>
+        <div class="surface-card" style="padding: 20px;">
+            <p class="stat-label">Strengths</p>
+            <p class="stat-value text-green">--</p>
         </div>
-        <div class="bg-slate-800 rounded-xl p-5 border border-slate-700 shadow-lg">
-            <p class="text-sm text-gray-400 mb-1">Weaknesses</p>
-            <p class="text-2xl font-bold text-red-400">--</p>
+        <div class="surface-card" style="padding: 20px;">
+            <p class="stat-label">Weaknesses</p>
+            <p class="stat-value text-red">--</p>
         </div>
     </div>
 
-    <!-- League Standings (loaded via HTMX) -->
-    <div class="bg-slate-800 rounded-xl border border-slate-700 shadow-lg">
-        <div class="px-6 py-4 border-b border-slate-700 flex items-center justify-between">
-            <h2 class="text-lg font-semibold text-white">League Standings</h2>
+    <!-- Standings -->
+    <div class="surface-card" style="margin-bottom: 32px;">
+        <div class="card-header">
+            <h2 class="section-heading">League Standings</h2>
             <div class="htmx-indicator" id="standings-spinner">
-                <svg class="animate-spin h-5 w-5 text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <div class="spinner"></div>
             </div>
         </div>
-        <div class="p-6"
+        <div class="card-body"
              hx-get="/analysis/standings"
              hx-trigger="load"
              hx-swap="innerHTML"
              hx-indicator="#standings-spinner">
-            <!-- Loading placeholder -->
-            <div class="flex items-center justify-center py-12 text-gray-500">
-                <svg class="animate-spin h-8 w-8 text-purple-400 mr-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+            <div class="loading-placeholder">
+                <div class="spinner"></div>
                 <span>Loading standings...</span>
             </div>
         </div>
     </div>
 
     <!-- Quick Actions -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
-        <a href="/analysis/team" class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-lg hover:border-purple-500/50 transition-colors group">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-purple-600/20 rounded-lg flex items-center justify-center group-hover:bg-purple-600/30 transition-colors">
-                    <svg class="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="text-white font-semibold">Analyze My Team</h3>
-                    <p class="text-sm text-gray-400">View strengths and weaknesses</p>
-                </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <a href="/analysis/team" class="surface-card action-card">
+            <div class="feature-icon feature-icon--blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                </svg>
+            </div>
+            <div>
+                <h3 class="section-heading">Analyze My Team</h3>
+                <p class="body-text" style="margin-top: 2px;">View strengths and weaknesses</p>
             </div>
         </a>
-        <a href="/analysis/comparison" class="bg-slate-800 rounded-xl p-6 border border-slate-700 shadow-lg hover:border-blue-500/50 transition-colors group">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center group-hover:bg-blue-600/30 transition-colors">
-                    <svg class="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
-                    </svg>
-                </div>
-                <div>
-                    <h3 class="text-white font-semibold">League Comparison</h3>
-                    <p class="text-sm text-gray-400">Compare against opponents</p>
-                </div>
+        <a href="/analysis/comparison" class="surface-card action-card">
+            <div class="feature-icon feature-icon--blue">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/>
+                </svg>
+            </div>
+            <div>
+                <h3 class="section-heading">League Comparison</h3>
+                <p class="body-text" style="margin-top: 2px;">Compare against opponents</p>
             </div>
         </a>
     </div>
+
 </div>
 {% endblock %}

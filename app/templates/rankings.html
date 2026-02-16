@@ -2,65 +2,55 @@
 {% block title %}Category Rankings - Fantasy Basketball Analyzer{% endblock %}
 {% block content %}
 <div class="max-w-6xl mx-auto">
-    <div class="mb-6">
-        <h1 class="text-3xl font-bold text-white">Category Rankings</h1>
-        <p class="mt-1 text-gray-400">See how all teams rank across every category.</p>
+
+    <div style="margin-bottom: 24px;">
+        <h1 class="page-title">Category Rankings</h1>
+        <p class="body-text" style="margin-top: 4px;">See how all teams rank across every category.</p>
     </div>
 
     <!-- Category Filter Pills -->
-    <div class="flex flex-wrap gap-2 mb-6">
+    <div class="flex flex-wrap gap-2" style="margin-bottom: 24px;">
         <button
-            class="category-pill px-4 py-2 rounded-full text-sm font-medium transition-colors bg-purple-600 text-white"
+            class="pill active"
             hx-get="/analysis/rankings-data"
             hx-target="#rankings-content"
             hx-swap="innerHTML"
             hx-indicator="#rankings-spinner"
             onclick="setActivePill(this)"
-        >
-            All
-        </button>
+        >All</button>
         {% for cat in ["FG%", "FT%", "3PTM", "PTS", "REB", "AST", "ST", "BLK", "TO", "DD"] %}
         <button
-            class="category-pill px-4 py-2 rounded-full text-sm font-medium transition-colors bg-slate-700 text-gray-300 hover:bg-slate-600"
+            class="pill"
             hx-get="/analysis/rankings-data?category={{ cat }}"
             hx-target="#rankings-content"
             hx-swap="innerHTML"
             hx-indicator="#rankings-spinner"
             onclick="setActivePill(this)"
-        >
-            {{ cat }}
-        </button>
+        >{{ cat }}</button>
         {% endfor %}
     </div>
 
-    <!-- Loading Spinner -->
-    <div id="rankings-spinner" class="htmx-indicator flex justify-center py-12">
-        <div class="flex items-center gap-3">
-            <svg class="animate-spin h-6 w-6 text-purple-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span class="text-gray-400">Loading rankings...</span>
-        </div>
+    <!-- Spinner -->
+    <div id="rankings-spinner" class="htmx-indicator loading-placeholder">
+        <div class="spinner"></div>
+        <span>Loading rankings...</span>
     </div>
 
-    <!-- Rankings Content (loaded via HTMX) -->
+    <!-- Content -->
     <div id="rankings-content"
          hx-get="/analysis/rankings-data"
          hx-trigger="load"
-         hx-indicator="#rankings-spinner"
-    >
+         hx-indicator="#rankings-spinner">
     </div>
+
 </div>
 
 <script>
 function setActivePill(el) {
-    document.querySelectorAll('.category-pill').forEach(function(pill) {
-        pill.classList.remove('bg-purple-600', 'text-white');
-        pill.classList.add('bg-slate-700', 'text-gray-300', 'hover:bg-slate-600');
+    document.querySelectorAll('.pill').forEach(function(p) {
+        p.classList.remove('active');
     });
-    el.classList.remove('bg-slate-700', 'text-gray-300', 'hover:bg-slate-600');
-    el.classList.add('bg-purple-600', 'text-white');
+    el.classList.add('active');
 }
 </script>
 {% endblock %}
