@@ -3,6 +3,7 @@
 import logging
 
 from app.config import CATEGORIES, NEGATIVE_CATEGORIES, STRENGTH_THRESHOLD, WEAKNESS_THRESHOLD
+from app.services.cache import NullCache
 
 logger = logging.getLogger(__name__)
 
@@ -10,25 +11,30 @@ logger = logging.getLogger(__name__)
 class TeamAnalyzer:
     """Analyzes a specific team's performance and needs."""
 
-    def __init__(self, team, league, league_analyzer):
+    def __init__(self, team, league, league_analyzer, cache=None):
         self.team = team
+        self.team_key = team.team_key
         self.league = league
         self.league_analyzer = league_analyzer
+        self.cache = cache or NullCache()
         self._roster = None
         self._roster_with_stats = None
+        self._category_rankings = None
 
     @property
     def roster(self):
         """Get team roster (cached)."""
         if self._roster is None:
-            self._roster = self.team.roster()
+            self._roster = self.cache.get_or_fetch("roster", self.team.roster)
         return self._roster
 
     def get_roster_with_stats(self):
         """Get roster with player stats fetched."""
-        if self._roster_with_stats is not None:
-            return self._roster_with_stats
+        if self._roster_with_stats is None:
+            self._roster_with_stats = self.cache.get_or_fetch("roster_with_stats", self._fetch_roster_with_stats)
+        return self._roster_with_stats
 
+    def _fetch_roster_with_stats(self):
         roster = self.roster
         player_ids = [p.get('player_id') for p in roster if p.get('player_id')]
 
@@ -53,7 +59,6 @@ class TeamAnalyzer:
                 player_data['stats'] = player_stats_map[pid]
             roster_with_stats.append(player_data)
 
-        self._roster_with_stats = roster_with_stats
         return roster_with_stats
 
     def get_roster_players(self):
@@ -131,18 +136,20 @@ class TeamAnalyzer:
 
     def get_team_stats_from_standings(self):
         """Get team stats from league standings/matchups."""
-        team_key = self.league.team_key()
         team_stats = self.league_analyzer.get_team_stats()
 
-        if team_key in team_stats:
-            return team_stats[team_key].get('stats', {})
+        if self.team_key in team_stats:
+            return team_stats[self.team_key].get('stats', {})
 
         # Fall back to calculating from roster
         return self.get_team_totals()
 
     def get_category_rankings(self):
         """Rank team in each category vs league."""
-        team_key = self.league.team_key()
+        if self._category_rankings is not None:
+            return self._category_rankings
+
+        team_key = self.team_key
         team_stats = self.league_analyzer.get_team_stats()
         categories = self.league_analyzer.get_category_names()
 
@@ -168,6 +175,7 @@ class TeamAnalyzer:
                     'total_teams': num_teams
                 }
 
+        self._category_rankings = rankings
         return rankings
 
     def identify_strengths(self):
@@ -238,13 +246,47 @@ class TeamAnalyzer:
 
         return analysis
 
+    def compare_to_opponent(self, opponent_key):
+        """Category-by-category head-to-head projection against another team."""
+        team_stats = self.league_analyzer.get_team_stats()
+        mine = team_stats.get(self.team_key, {}).get('stats', {})
+        theirs = team_stats.get(opponent_key, {}).get('stats', {})
+        categories = self.league_analyzer.get_category_names()
+
+        rows = []
+        record = {'wins': 0, 'losses': 0, 'ties': 0}
+
+        for cat in categories:
+            try:
+                my_val = float(mine.get(cat, 0))
+                their_val = float(theirs.get(cat, 0))
+            except (ValueError, TypeError):
+                continue
+
+            if my_val == their_val:
+                result = 'tie'
+            elif (my_val < their_val) == (cat in NEGATIVE_CATEGORIES):
+                result = 'win'
+            else:
+                result = 'loss'
+            record[{'win': 'wins', 'loss': 'losses', 'tie': 'ties'}[result]] += 1
+
+            rows.append({
+                'category': cat,
+                'my_value': my_val,
+                'their_value': their_val,
+                'result': result,
+            })
+
+        return {
+            'opponent_name': team_stats.get(opponent_key, {}).get('name', opponent_key),
+            'categories': rows,
+            'record': record,
+        }
+
     def get_comparison_to_league_avg(self):
         """Compare team stats to league averages."""
-        team_stats = self.get_team_stats_from_standings()
-        team_totals = self.get_team_totals()
-
-        # Use whichever has data
-        stats = team_stats if team_stats else team_totals
+        stats = self.get_team_stats_from_standings()
 
         league_team_stats = self.league_analyzer.get_team_stats()
         league_avgs = self.league_analyzer.calculate_league_averages(league_team_stats)

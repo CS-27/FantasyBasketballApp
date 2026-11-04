@@ -7,6 +7,7 @@ from app.config import (
     CATEGORIES, NEGATIVE_CATEGORIES, POSITIONS,
     ACTIVE_POSITIONS, DEFAULT_FA_RECOMMENDATIONS
 )
+from app.services.cache import NullCache
 
 logger = logging.getLogger(__name__)
 
@@ -14,18 +15,24 @@ logger = logging.getLogger(__name__)
 class FreeAgentFinder:
     """Finds and scores free agents based on team needs."""
 
-    def __init__(self, league, team_analyzer):
+    def __init__(self, league, team_analyzer, cache=None):
         self.league = league
         self.team_analyzer = team_analyzer
+        self.cache = cache or NullCache()
         self._free_agents_cache = {}
 
     def get_free_agents(self, position=None, with_stats=True):
         """Fetch available free agents, optionally filtered by position."""
         cache_key = f"{position or 'all'}_{'stats' if with_stats else 'nostats'}"
 
-        if cache_key in self._free_agents_cache:
-            return self._free_agents_cache[cache_key]
+        if cache_key not in self._free_agents_cache:
+            self._free_agents_cache[cache_key] = self.cache.get_or_fetch(
+                f"free_agents_{cache_key}",
+                lambda: self._fetch_free_agents(position, with_stats),
+            )
+        return self._free_agents_cache[cache_key]
 
+    def _fetch_free_agents(self, position, with_stats):
         try:
             if position:
                 fas = self.league.free_agents(position)
@@ -49,7 +56,6 @@ class FreeAgentFinder:
             if with_stats and fas:
                 fas = self._fetch_fa_stats(fas)
 
-            self._free_agents_cache[cache_key] = fas
             return fas
         except Exception as e:
             logger.warning("Error fetching free agents: %s", e)

@@ -2,7 +2,8 @@
 
 import logging
 
-from app.config import CATEGORIES, NEGATIVE_CATEGORIES
+from app.config import CATEGORIES, NEGATIVE_CATEGORIES, STATIC_CACHE_TTL
+from app.services.cache import NullCache
 
 logger = logging.getLogger(__name__)
 
@@ -10,8 +11,9 @@ logger = logging.getLogger(__name__)
 class LeagueAnalyzer:
     """Analyzes league-wide statistics and rankings."""
 
-    def __init__(self, league):
+    def __init__(self, league, cache=None):
         self.league = league
+        self.cache = cache or NullCache()
         self._settings = None
         self._standings = None
         self._teams = None
@@ -22,14 +24,16 @@ class LeagueAnalyzer:
     def settings(self):
         """Get league settings (cached)."""
         if self._settings is None:
-            self._settings = self.league.settings()
+            self._settings = self.cache.get_or_fetch("settings", self.league.settings, STATIC_CACHE_TTL)
         return self._settings
 
     @property
     def stat_categories(self):
         """Get stat categories from league settings."""
         if self._stat_categories is None:
-            self._stat_categories = self.league.stat_categories()
+            self._stat_categories = self.cache.get_or_fetch(
+                "stat_categories", self.league.stat_categories, STATIC_CACHE_TTL
+            )
         return self._stat_categories
 
     def get_category_names(self):
@@ -45,13 +49,13 @@ class LeagueAnalyzer:
     def get_standings(self):
         """Get current league standings."""
         if self._standings is None:
-            self._standings = self.league.standings()
+            self._standings = self.cache.get_or_fetch("standings", self.league.standings)
         return self._standings
 
     def get_teams(self):
         """Get all teams in the league."""
         if self._teams is None:
-            self._teams = self.league.teams()
+            self._teams = self.cache.get_or_fetch("teams", self.league.teams, STATIC_CACHE_TTL)
         return self._teams
 
     def _fetch_team_roster_stats(self, team_key):
@@ -122,9 +126,12 @@ class LeagueAnalyzer:
 
     def get_team_stats(self):
         """Get stats for all teams in the league."""
-        if self._team_stats_cache is not None:
-            return self._team_stats_cache
+        if self._team_stats_cache is None:
+            self._team_stats_cache = self.cache.get_or_fetch("team_stats", self._fetch_all_team_stats)
+        return self._team_stats_cache
 
+    def _fetch_all_team_stats(self):
+        """Fetch roster stats for every team (~2 API calls per team)."""
         teams = self.get_teams()
         team_stats = {}
 
@@ -140,7 +147,6 @@ class LeagueAnalyzer:
                 'stats': stats
             }
 
-        self._team_stats_cache = team_stats
         return team_stats
 
     def calculate_league_averages(self, team_stats):

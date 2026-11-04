@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Standings - Fantasy Basketball Analyzer{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+
+    <div style="margin-bottom: 32px;">
+        <h1 class="page-title">Standings</h1>
+        <p class="body-text" style="margin-top: 4px;">Current league standings.</p>
+    </div>
+
+    <div class="surface-card">
+        <div class="card-header">
+            <h2 class="section-heading">League Standings</h2>
+            <div class="htmx-indicator" id="standings-spinner">
+                <div class="spinner"></div>
+            </div>
+        </div>
+        <div class="card-body"
+             hx-get="/analysis/standings-data"
+             hx-trigger="load"
+             hx-swap="innerHTML"
+             hx-indicator="#standings-spinner">
+            <div class="loading-placeholder">
+                <div class="spinner"></div>
+                <span>Loading standings...</span>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,19 +1,20 @@
-"""Analysis feature routes - standings, team analysis, comparison, rankings."""
+"""Analysis feature routes - standings, team analysis, comparison, rankings.
+
+Data endpoints are plain `def` (not `async def`) because the Yahoo client is
+blocking; FastAPI runs them in a threadpool so they don't stall the server.
+"""
 
 import logging
 
-import yahoo_fantasy_api as yfa
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import RedirectResponse
+from fastapi.responses import Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user
-from app.models import User, UserLeague
-from app.services.league_analyzer import LeagueAnalyzer
-from app.services.team_analyzer import TeamAnalyzer
-from app.services.yahoo_client import WebOAuthContext
+from app.dependencies import require_user, user_to_dict
+from app.models import User
+from app.services.league_context import LeagueContext, NoLeagueError
 
 logger = logging.getLogger(__name__)
 
@@ -21,217 +22,146 @@ router = APIRouter(prefix="/analysis", tags=["analysis"])
 templates = Jinja2Templates(directory="app/templates")
 
 
-def _get_user_league(user: User, db: Session):
-    """Get the user's active league info from DB, or discover it from Yahoo."""
-    user_league = (
-        db.query(UserLeague)
-        .filter(UserLeague.user_id == user.id, UserLeague.is_active == True)
-        .first()
-    )
-    if user_league:
-        return user_league.league_id, user_league.team_key
+def render_partial(request: Request, template: str, build, defaults: dict):
+    """Render an HTMX partial, turning failures into an inline error message.
 
-    # Discover leagues from Yahoo API
-    ctx = WebOAuthContext(user.access_token, user.refresh_token)
-    ctx.refresh_if_needed(db, user)
-    game = yfa.Game(ctx, "nba")
-    league_ids = game.league_ids()
+    `build` returns the template context; `defaults` fills the context when
+    it fails so the template can still render.
+    """
+    try:
+        context = build()
+    except NoLeagueError as e:
+        context = {**defaults, "error": str(e)}
+    except Exception as e:
+        logger.exception("Error rendering %s", template)
+        context = {**defaults, "error": str(e)}
+    return templates.TemplateResponse(template, {"request": request, **context})
 
-    if not league_ids:
-        return None, None
 
-    league_id = league_ids[-1]  # Most recent league
-    league = game.to_league(league_id)
-    team_key = league.team_key()
-
-    # Store for future use
-    user_league = UserLeague(
-        user_id=user.id,
-        league_id=league_id,
-        team_key=team_key,
-    )
-    db.add(user_league)
-    db.commit()
-
-    return league_id, team_key
+def _page(request: Request, template: str, user: User):
+    return templates.TemplateResponse(template, {"request": request, "user": user_to_dict(user)})
 
 
 @router.get("/standings")
-async def standings(
-    request: Request,
-    user: User | None = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """Return standings partial (loaded via HTMX from dashboard)."""
-    if not user:
-        return RedirectResponse("/auth/login")
+def standings_page(request: Request, user: User = Depends(require_user)):
+    """Full standings page (loads detail via HTMX)."""
+    return _page(request, "standings.html", user)
 
-    try:
-        league_id, _ = _get_user_league(user, db)
-        if not league_id:
-            return templates.TemplateResponse(
-                "partials/standings.html",
-                {"request": request, "standings": [], "error": "No league found."},
-            )
 
-        ctx = WebOAuthContext(user.access_token, user.refresh_token)
-        ctx.refresh_if_needed(db, user)
-        game = yfa.Game(ctx, "nba")
-        league = game.to_league(league_id)
+@router.get("/standings-data")
+def standings_data(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    """Return standings partial (loaded via HTMX)."""
+    def build():
+        ctx = LeagueContext(user, db)
+        return {"standings": ctx.league_analyzer.get_standings_display()}
 
-        analyzer = LeagueAnalyzer(league)
-        standings_data = analyzer.get_standings_display()
-
-        return templates.TemplateResponse(
-            "partials/standings.html",
-            {"request": request, "standings": standings_data},
-        )
-    except Exception as e:
-        logger.exception("Error fetching standings")
-        return templates.TemplateResponse(
-            "partials/standings.html",
-            {"request": request, "standings": [], "error": str(e)},
-        )
+    return render_partial(request, "partials/standings.html", build, {"standings": []})
 
 
 @router.get("/team")
-async def team_page(
-    request: Request,
-    user: User | None = Depends(get_current_user),
-):
+def team_page(request: Request, user: User = Depends(require_user)):
     """Full team analysis page (loads detail via HTMX)."""
-    if not user:
-        return RedirectResponse("/auth/login")
-
-    return templates.TemplateResponse(
-        "team_analysis.html",
-        {"request": request, "user": {"display_name": user.display_name, "subscription_status": user.subscription_status}},
-    )
+    return _page(request, "team_analysis.html", user)
 
 
 @router.get("/team-data")
-async def team_data(
-    request: Request,
-    user: User | None = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
+def team_data(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
     """Return team analysis partial (loaded via HTMX)."""
-    if not user:
-        return RedirectResponse("/auth/login")
+    def build():
+        team_analyzer = LeagueContext(user, db).team_analyzer
+        return {
+            "rankings": team_analyzer.get_category_rankings(),
+            "strengths": team_analyzer.identify_strengths(),
+            "weaknesses": team_analyzer.identify_weaknesses(),
+        }
 
-    try:
-        league_id, team_key = _get_user_league(user, db)
-        if not league_id:
-            return templates.TemplateResponse(
-                "partials/team_analysis.html",
-                {"request": request, "error": "No league found."},
-            )
-
-        ctx = WebOAuthContext(user.access_token, user.refresh_token)
-        ctx.refresh_if_needed(db, user)
-        game = yfa.Game(ctx, "nba")
-        league = game.to_league(league_id)
-        team = league.to_team(team_key)
-
-        league_analyzer = LeagueAnalyzer(league)
-        team_analyzer = TeamAnalyzer(team, league, league_analyzer)
-
-        rankings = team_analyzer.get_category_rankings()
-        strengths = team_analyzer.identify_strengths()
-        weaknesses = team_analyzer.identify_weaknesses()
-
-        return templates.TemplateResponse(
-            "partials/team_analysis.html",
-            {
-                "request": request,
-                "rankings": rankings,
-                "strengths": strengths,
-                "weaknesses": weaknesses,
-            },
-        )
-    except Exception as e:
-        logger.exception("Error fetching team data")
-        return templates.TemplateResponse(
-            "partials/team_analysis.html",
-            {"request": request, "error": str(e)},
-        )
+    return render_partial(request, "partials/team_analysis.html", build, {})
 
 
 @router.get("/comparison")
-async def comparison(
-    request: Request,
-    user: User | None = Depends(get_current_user),
-):
-    """League comparison page (placeholder)."""
-    if not user:
-        return RedirectResponse("/auth/login")
+def comparison_page(request: Request, user: User = Depends(require_user)):
+    """League comparison page (loads detail via HTMX)."""
+    return _page(request, "comparison.html", user)
 
-    return templates.TemplateResponse(
-        "comparison.html",
-        {"request": request, "user": {"display_name": user.display_name, "subscription_status": user.subscription_status}},
+
+@router.get("/comparison-data")
+def comparison_data(
+    request: Request,
+    opponent: str = "",
+    user: User = Depends(require_user),
+    db: Session = Depends(get_db),
+):
+    """Return comparison partial: vs league average (free) and vs an opponent (premium)."""
+    is_premium = user.subscription_status == "premium"
+
+    def build():
+        ctx = LeagueContext(user, db)
+        team_analyzer = ctx.team_analyzer
+        team_stats = ctx.league_analyzer.get_team_stats()
+
+        opponents = sorted(
+            ({"team_key": key, "name": data["name"]} for key, data in team_stats.items()
+             if key != ctx.team_key),
+            key=lambda o: o["name"],
+        )
+
+        head_to_head = None
+        if opponent and is_premium and opponent in team_stats:
+            head_to_head = team_analyzer.compare_to_opponent(opponent)
+
+        return {
+            "comparison": team_analyzer.get_comparison_to_league_avg(),
+            "opponents": opponents,
+            "selected_opponent": opponent,
+            "head_to_head": head_to_head,
+            "is_premium": is_premium,
+        }
+
+    return render_partial(
+        request, "partials/comparison.html", build,
+        {"comparison": {}, "opponents": [], "selected_opponent": opponent,
+         "head_to_head": None, "is_premium": is_premium},
     )
 
 
 @router.get("/rankings")
-async def rankings_page(
-    request: Request,
-    user: User | None = Depends(get_current_user),
-):
+def rankings_page(request: Request, user: User = Depends(require_user)):
     """Category rankings page."""
-    if not user:
-        return RedirectResponse("/auth/login")
-
-    return templates.TemplateResponse(
-        "rankings.html",
-        {"request": request, "user": {"display_name": user.display_name, "subscription_status": user.subscription_status}},
-    )
+    return _page(request, "rankings.html", user)
 
 
 @router.get("/rankings-data")
-async def rankings_data(
+def rankings_data(
     request: Request,
     category: str = None,
-    user: User | None = Depends(get_current_user),
+    user: User = Depends(require_user),
     db: Session = Depends(get_db),
 ):
     """Return category rankings partial (loaded via HTMX)."""
-    if not user:
-        return RedirectResponse("/auth/login")
-
-    try:
-        league_id, _ = _get_user_league(user, db)
-        if not league_id:
-            return templates.TemplateResponse(
-                "partials/category_rankings.html",
-                {"request": request, "categories": [], "selected_category": None, "rankings": {}, "error": "No league found."},
-            )
-
-        ctx = WebOAuthContext(user.access_token, user.refresh_token)
-        ctx.refresh_if_needed(db, user)
-        game = yfa.Game(ctx, "nba")
-        league = game.to_league(league_id)
-
-        analyzer = LeagueAnalyzer(league)
-        categories = analyzer.get_category_names()
+    def build():
+        analyzer = LeagueContext(user, db).league_analyzer
         team_stats = analyzer.get_team_stats()
-
         if category:
             rankings = analyzer.rank_teams_by_category(team_stats, category)
         else:
             rankings = analyzer.get_category_rankings_matrix(team_stats)
+        return {
+            "categories": analyzer.get_category_names(),
+            "selected_category": category,
+            "rankings": rankings,
+        }
 
-        return templates.TemplateResponse(
-            "partials/category_rankings.html",
-            {
-                "request": request,
-                "categories": categories,
-                "selected_category": category,
-                "rankings": rankings,
-            },
-        )
-    except Exception as e:
-        logger.exception("Error fetching category rankings")
-        return templates.TemplateResponse(
-            "partials/category_rankings.html",
-            {"request": request, "categories": [], "selected_category": None, "rankings": {}, "error": str(e)},
-        )
+    return render_partial(
+        request, "partials/category_rankings.html", build,
+        {"categories": [], "selected_category": None, "rankings": {}},
+    )
+
+
+@router.post("/refresh")
+def refresh(user: User = Depends(require_user), db: Session = Depends(get_db)):
+    """Clear cached Yahoo data so the next load fetches fresh stats."""
+    try:
+        LeagueContext(user, db).cache.clear()
+    except NoLeagueError:
+        pass
+    return Response(status_code=204, headers={"HX-Refresh": "true"})

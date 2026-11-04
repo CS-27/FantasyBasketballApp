@@ -3,10 +3,11 @@
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.config import DEV_MODE
 from app.database import get_db
 from app.models import User
 from app.services.yahoo_client import (
@@ -92,7 +93,9 @@ async def callback(request: Request, code: str, state: str, db: Session = Depend
 @router.get("/dev-login")
 async def dev_login(request: Request, db: Session = Depends(get_db)):
     """Dev-only: log in as the dev user (imported from oauth2.json)."""
-    user = db.query(User).filter(User.yahoo_guid == "dev-user").first()
+    if not DEV_MODE:
+        raise HTTPException(status_code=404)
+    user =db.query(User).filter(User.yahoo_guid == "dev-user").first()
     if not user:
         return RedirectResponse(url="/?error=run_dev_setup")
     request.session["user_id"] = user.id

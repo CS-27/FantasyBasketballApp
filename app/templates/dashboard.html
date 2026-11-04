@@ -6,9 +6,15 @@
 <div class="max-w-6xl mx-auto">
 
     <!-- Welcome -->
-    <div style="margin-bottom: 32px;">
-        <h1 class="page-title">Welcome back, {{ user.display_name }}</h1>
-        <p class="body-text" style="margin-top: 4px;">Here's your league overview.</p>
+    <div style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap;">
+        <div>
+            <h1 class="page-title">Welcome back, {{ user.display_name }}</h1>
+            <p class="body-text" style="margin-top: 4px;">Here's your league overview.</p>
+        </div>
+        <button class="btn btn--secondary" style="padding: 6px 14px; font-size: 12px;"
+                hx-post="/analysis/refresh" hx-swap="none" title="Stats are cached for 15 minutes">
+            Refresh data
+        </button>
     </div>
 
     <!-- Quick Stats -->
@@ -40,7 +46,7 @@
             </div>
         </div>
         <div class="card-body"
-             hx-get="/analysis/standings"
+             hx-get="/analysis/standings-data"
              hx-trigger="load"
              hx-swap="innerHTML"
              hx-indicator="#standings-spinner">

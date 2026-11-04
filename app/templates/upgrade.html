@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Upgrade - Fantasy Basketball Analyzer{% endblock %}
+{% block content %}
+<div class="max-w-6xl mx-auto">
+
+    <div style="margin-bottom: 32px;">
+        <h1 class="page-title">Upgrade to Premium</h1>
+        <p class="body-text" style="margin-top: 4px;">Unlock recommendations built around your team's weaknesses.</p>
+    </div>
+
+    {% if status == "canceled" %}
+    <div class="error-panel" style="margin-bottom: 24px;">Checkout was canceled. You haven't been charged.</div>
+    {% endif %}
+
+    <div class="max-w-md">
+        <div class="surface-card pricing-card pricing-card--highlighted">
+            <div class="plan-name" style="color: var(--accent-blue);">Premium</div>
+            <div style="margin-top: 12px; margin-bottom: 28px;">
+                <span class="price">{{ price.split('/')[0] }}</span>
+                <span class="price-period">/month</span>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px;">
+                {% for feature in ["Free agent recommendations", "Pickup and drop suggestions", "Head-to-head opponent comparison", "Everything in Free"] %}
+                <div class="pricing-feature">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 13l4 4L19 7"/></svg>
+                    {{ feature }}
+                </div>
+                {% endfor %}
+            </div>
+
+            {% if user.is_premium %}
+                <p class="body-text" style="margin-bottom: 12px;">You're already on Premium.</p>
+                {% if user.has_billing %}
+                <form method="post" action="/billing/portal">
+                    <button type="submit" class="btn btn--secondary" style="width: 100%; padding: 10px 0;">Manage Subscription</button>
+                </form>
+                {% endif %}
+            {% elif billing_enabled %}
+                <form method="post" action="/billing/checkout">
+                    <button type="submit" class="btn" style="width: 100%; padding: 10px 0;">Subscribe for {{ price }}</button>
+                </form>
+                <p class="caption" style="margin-top: 10px; text-align: center;">Secure checkout by Stripe. Cancel anytime.</p>
+            {% else %}
+                <div class="empty-state">Billing isn't available yet. Check back soon.</div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

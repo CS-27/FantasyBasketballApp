@@ -7,8 +7,9 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from app.config import SECRET_KEY
 from app.database import init_db, SessionLocal
+from app.dependencies import user_to_dict
 from app.models import User
-from app.routers import auth, dashboard, analysis, premium
+from app.routers import auth, billing, dashboard, analysis, premium
 
 app = FastAPI(title="Yahoo Fantasy Basketball Analyzer")
 
@@ -26,6 +27,7 @@ app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(analysis.router)
 app.include_router(premium.router)
+app.include_router(billing.router)
 
 
 @app.on_event("startup")
@@ -41,8 +43,7 @@ async def landing(request: Request):
         try:
             user = db.query(User).filter(User.id == user_id).first()
             if user:
-                user_dict = {"display_name": user.display_name, "subscription_status": user.subscription_status}
-                return templates.TemplateResponse("dashboard.html", {"request": request, "user": user_dict})
+                return templates.TemplateResponse("dashboard.html", {"request": request, "user": user_to_dict(user)})
         finally:
             db.close()
     return templates.TemplateResponse("landing.html", {"request": request})

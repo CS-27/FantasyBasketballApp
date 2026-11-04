@@ -1,0 +1,124 @@
+{% macro fmt(cat, value) -%}
+{%- if cat in ["FG%", "FT%"] -%}{{ "%.3f"|format(value) }}{%- else -%}{{ "%.0f"|format(value) }}{%- endif -%}
+{%- endmacro %}
+
+{% if error %}
+<div class="surface-card"><div class="card-body"><div class="error-panel">{{ error }}</div></div></div>
+{% else %}
+
+<!-- vs League Average -->
+<div class="surface-card" style="margin-bottom: 32px;">
+    <div class="card-header">
+        <h2 class="section-heading">vs League Average</h2>
+    </div>
+    <div class="card-body">
+        {% if not comparison %}
+        <div class="empty-state">No stats available yet.</div>
+        {% else %}
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th class="text-right">Your Team</th>
+                        <th class="text-right">League Avg</th>
+                        <th class="text-right">Difference</th>
+                        <th class="text-center">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cat, row in comparison.items() %}
+                    <tr>
+                        <td style="font-weight: 500;">{{ cat }}</td>
+                        <td class="text-right">{{ fmt(cat, row.team_value) }}</td>
+                        <td class="text-right" style="color: var(--text-secondary);">{{ fmt(cat, row.league_avg) }}</td>
+                        <td class="text-right {% if row.is_better %}text-green{% elif row.diff_percent != 0 %}text-red{% endif %}" style="font-weight: 500;">
+                            {{ "%+.1f"|format(row.diff_percent) }}%
+                        </td>
+                        <td class="text-center">
+                            {% if row.diff_percent == 0 %}
+                                <span class="badge badge--neutral">EVEN</span>
+                            {% elif row.is_better %}
+                                <span class="badge badge--strength">ABOVE</span>
+                            {% else %}
+                                <span class="badge badge--weakness">BELOW</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <p class="caption" style="margin-top: 12px;">TO is inverted: fewer turnovers than average counts as above.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- vs Opponent -->
+<div class="surface-card">
+    <div class="card-header">
+        <h2 class="section-heading">Head-to-Head {% if not is_premium %}<span class="sidebar-badge">PRO</span>{% endif %}</h2>
+        <div class="htmx-indicator" id="h2h-spinner"><div class="spinner"></div></div>
+    </div>
+    <div class="card-body">
+        {% if not is_premium %}
+        <div class="empty-state">
+            <p class="body-text" style="margin-bottom: 12px;">See how you'd fare category-by-category against any team in your league.</p>
+            <a href="/billing/upgrade" class="btn" style="padding: 8px 18px;">Upgrade to Premium</a>
+        </div>
+        {% else %}
+        <select name="opponent"
+                hx-get="/analysis/comparison-data"
+                hx-target="#comparison-content"
+                hx-trigger="change"
+                hx-indicator="#h2h-spinner"
+                style="background: var(--bg-tertiary); color: var(--text-primary); border: 1px solid var(--border-light); border-radius: 8px; padding: 8px 12px; font-size: 13px; margin-bottom: 20px; max-width: 100%;">
+            <option value="">Select an opponent...</option>
+            {% for opp in opponents %}
+            <option value="{{ opp.team_key }}" {% if opp.team_key == selected_opponent %}selected{% endif %}>{{ opp.name }}</option>
+            {% endfor %}
+        </select>
+
+        {% if head_to_head %}
+        {% set rec = head_to_head.record %}
+        <p class="body-text" style="margin-bottom: 16px;">
+            Projected result vs <strong style="color: var(--text-primary);">{{ head_to_head.opponent_name }}</strong>:
+            <span class="text-green" style="font-weight: 600;">{{ rec.wins }}</span>-<span class="text-red" style="font-weight: 600;">{{ rec.losses }}</span>-{{ rec.ties }}
+            <span class="caption">(based on season totals)</span>
+        </p>
+        <div style="overflow-x: auto;">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th class="text-right">You</th>
+                        <th class="text-right">{{ head_to_head.opponent_name }}</th>
+                        <th class="text-center">Edge</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in head_to_head.categories %}
+                    <tr>
+                        <td style="font-weight: 500;">{{ row.category }}</td>
+                        <td class="text-right {% if row.result == 'win' %}text-green{% endif %}">{{ fmt(row.category, row.my_value) }}</td>
+                        <td class="text-right {% if row.result == 'loss' %}text-red{% endif %}">{{ fmt(row.category, row.their_value) }}</td>
+                        <td class="text-center">
+                            {% if row.result == 'win' %}<span class="badge badge--strength">YOU</span>
+                            {% elif row.result == 'loss' %}<span class="badge badge--weakness">THEM</span>
+                            {% else %}<span class="badge badge--neutral">TIE</span>{% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% elif opponents %}
+        <div class="empty-state">Pick an opponent to see the matchup.</div>
+        {% else %}
+        <div class="empty-state">No opponents found.</div>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+
+{% endif %}

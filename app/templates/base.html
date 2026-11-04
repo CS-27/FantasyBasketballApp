@@ -27,6 +27,13 @@
             <span class="navbar-user hidden sm:inline">{{ user.display_name }}</span>
             {% if user.subscription_status == "premium" %}
             <span class="badge badge--pro">PRO</span>
+            {% if user.has_billing %}
+            <form method="post" action="/billing/portal" style="display: inline;">
+                <button type="submit" class="navbar-link" style="background: none; border: none; cursor: pointer;">Billing</button>
+            </form>
+            {% endif %}
+            {% else %}
+            <a href="/billing/upgrade" class="btn" style="padding: 6px 14px; font-size: 12px;">Upgrade</a>
             {% endif %}
             <a href="/auth/logout" class="navbar-link">Logout</a>
             {% else %}

@@ -14,7 +14,8 @@ def create_env_file(creds):
         print(".env already exists, skipping")
         return
 
-    env_content = f"""SECRET_KEY=dev-secret-key-change-in-prod
+    env_content = f"""DEV_MODE=true
+SECRET_KEY=dev-secret-key-change-in-prod
 BASE_URL=http://localhost:8000
 DATABASE_URL=sqlite:///./fantasy.db
 YAHOO_CLIENT_ID={creds["consumer_key"]}

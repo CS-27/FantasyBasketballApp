@@ -6,7 +6,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- Web App Settings ---
-SECRET_KEY = os.getenv("SECRET_KEY", "change-me-in-production")
+# Enables dev-only conveniences (e.g. /auth/dev-login). Never set in production.
+DEV_MODE = os.getenv("DEV_MODE", "").lower() in ("1", "true", "yes")
+
+SECRET_KEY = os.getenv("SECRET_KEY", "")
+if not SECRET_KEY:
+    if not DEV_MODE:
+        raise RuntimeError("SECRET_KEY must be set (or set DEV_MODE=true for local development)")
+    SECRET_KEY = "dev-secret-key-not-for-production"
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./fantasy.db")
 BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
 
@@ -69,3 +76,6 @@ DEFAULT_FA_RECOMMENDATIONS = 10
 
 # Cache TTL in seconds (15 minutes)
 CACHE_TTL = 900
+
+# Cache TTL for data that rarely changes, e.g. league settings (24 hours)
+STATIC_CACHE_TTL = 86400
