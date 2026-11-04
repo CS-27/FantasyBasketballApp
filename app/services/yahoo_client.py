@@ -147,6 +147,39 @@ async def exchange_code_for_tokens(code: str) -> dict:
     }
 
 
+def _find_key(obj, key):
+    """Depth-first search for the first value stored under `key`."""
+    if isinstance(obj, dict):
+        if key in obj:
+            return obj[key]
+        children = obj.values()
+    elif isinstance(obj, list):
+        children = obj
+    else:
+        return None
+    for child in children:
+        found = _find_key(child, key)
+        if found is not None:
+            return found
+    return None
+
+
+async def get_fantasy_user_guid(access_token: str) -> str:
+    """Get the user's Yahoo GUID from the Fantasy API.
+
+    Fallback for when the token response omits xoauth_yahoo_guid and the
+    app lacks OpenID permission for the userinfo endpoint.
+    """
+    async with httpx.AsyncClient() as client:
+        resp = await client.get(
+            "https://fantasysports.yahooapis.com/fantasy/v2/users;use_login=1",
+            params={"format": "json"},
+            headers={"Authorization": f"Bearer {access_token}"},
+        )
+        resp.raise_for_status()
+        return _find_key(resp.json(), "guid") or ""
+
+
 async def get_yahoo_user_info(access_token: str) -> dict:
     """Fetch user profile from Yahoo's userinfo endpoint."""
     async with httpx.AsyncClient() as client:

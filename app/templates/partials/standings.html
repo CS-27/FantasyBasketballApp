@@ -19,7 +19,7 @@
             {% for team in standings %}
             {% set total = team.wins + team.losses + team.ties %}
             {% set win_pct = (team.wins / total * 100) if total > 0 else 0 %}
-            <tr>
+            <tr{% if my_team_key and team.team_key == my_team_key %} style="background: var(--bg-tertiary);" aria-current="true"{% endif %}>
                 <td>
                     <span class="rank-badge {% if team.rank <= 3 %}rank-badge--top{% elif team.rank >= 8 %}rank-badge--bottom{% else %}rank-badge--mid{% endif %}">
                         {{ team.rank }}

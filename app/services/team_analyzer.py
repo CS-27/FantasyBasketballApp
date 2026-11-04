@@ -4,6 +4,7 @@ import logging
 
 from app.config import CATEGORIES, NEGATIVE_CATEGORIES, STRENGTH_THRESHOLD, WEAKNESS_THRESHOLD
 from app.services.cache import NullCache
+from app.services.league_analyzer import sum_player_stats
 
 logger = logging.getLogger(__name__)
 
@@ -79,60 +80,8 @@ class TeamAnalyzer:
 
     def get_team_totals(self):
         """Aggregate season stats for the team's roster."""
-        roster = self.get_roster_with_stats()
-        categories = self.league_analyzer.get_category_names()
-
-        totals = {cat: 0 for cat in categories}
-        player_count = 0
-
-        # For percentage calculations, track totals
-        fg_made = 0
-        fg_att = 0
-        ft_made = 0
-        ft_att = 0
-
-        for player in roster:
-            stats = player.get('stats', {})
-
-            if stats:
-                player_count += 1
-
-                for cat in categories:
-                    value = stats.get(cat)
-                    if value is not None:
-                        try:
-                            value = float(value)
-                            if cat not in ['FG%', 'FT%']:
-                                totals[cat] += value
-                        except (ValueError, TypeError):
-                            pass
-
-                # Parse FGM/A and FTM/A for accurate percentage calculation
-                fgma = stats.get('FGM/A', '')
-                if fgma and '/' in str(fgma):
-                    parts = str(fgma).split('/')
-                    try:
-                        fg_made += float(parts[0])
-                        fg_att += float(parts[1])
-                    except (ValueError, IndexError):
-                        pass
-
-                ftma = stats.get('FTM/A', '')
-                if ftma and '/' in str(ftma):
-                    parts = str(ftma).split('/')
-                    try:
-                        ft_made += float(parts[0])
-                        ft_att += float(parts[1])
-                    except (ValueError, IndexError):
-                        pass
-
-        # Calculate team percentages from totals
-        if fg_att > 0:
-            totals['FG%'] = fg_made / fg_att
-        if ft_att > 0:
-            totals['FT%'] = ft_made / ft_att
-
-        return totals
+        players = [p['stats'] for p in self.get_roster_with_stats() if p.get('stats')]
+        return sum_player_stats(players, self.league_analyzer.get_category_names())
 
     def get_team_stats_from_standings(self):
         """Get team stats from league standings/matchups."""

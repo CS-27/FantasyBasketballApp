@@ -9,7 +9,7 @@
     </div>
 
     <div id="comparison-content"
-         hx-get="/analysis/comparison-data"
+         hx-get="/analysis/comparison-data{% if opponent %}?opponent={{ opponent | urlencode }}{% endif %}"
          hx-trigger="load"
          hx-swap="innerHTML">
         <div class="surface-card">

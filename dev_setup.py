@@ -2,6 +2,7 @@
 
 import json
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from app.database import init_db, SessionLocal
@@ -15,7 +16,7 @@ def create_env_file(creds):
         return
 
     env_content = f"""DEV_MODE=true
-SECRET_KEY=dev-secret-key-change-in-prod
+SECRET_KEY={secrets.token_urlsafe(32)}
 BASE_URL=http://localhost:8000
 DATABASE_URL=sqlite:///./fantasy.db
 YAHOO_CLIENT_ID={creds["consumer_key"]}

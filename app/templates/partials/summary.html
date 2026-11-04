@@ -1,0 +1,27 @@
+{# Dashboard summary cards, swapped into the grid in dashboard.html #}
+<div class="surface-card" style="padding: 20px;">
+    <p class="stat-label">League Rank</p>
+    <p class="stat-value">
+        {% if standing and standing.rank %}{{ standing.rank }}<span class="caption"> / {{ num_teams }}</span>{% else %}--{% endif %}
+    </p>
+</div>
+<div class="surface-card" style="padding: 20px;">
+    <p class="stat-label">Record</p>
+    <p class="stat-value">
+        {% if standing %}{{ standing.wins }}-{{ standing.losses }}{% if standing.ties %}-{{ standing.ties }}{% endif %}{% else %}--{% endif %}
+    </p>
+</div>
+<div class="surface-card" style="padding: 20px;">
+    <p class="stat-label">Strengths</p>
+    <p class="stat-value text-green" title="{{ strengths | map(attribute='category') | join(', ') }}">
+        {% if error %}--{% else %}{{ strengths | length }}{% endif %}
+    </p>
+    {% if strengths %}<p class="caption">{{ strengths | map(attribute='category') | join(', ') }}</p>{% endif %}
+</div>
+<div class="surface-card" style="padding: 20px;">
+    <p class="stat-label">Weaknesses</p>
+    <p class="stat-value text-red" title="{{ weaknesses | map(attribute='category') | join(', ') }}">
+        {% if error %}--{% else %}{{ weaknesses | length }}{% endif %}
+    </p>
+    {% if weaknesses %}<p class="caption">{{ weaknesses | map(attribute='category') | join(', ') }}</p>{% endif %}
+</div>

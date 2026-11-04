@@ -1,21 +1,16 @@
 """Premium feature routes - free agent recommendations and pickup suggestions."""
 
-import logging
-
 from fastapi import APIRouter, Depends, Request
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import require_premium, user_to_dict
 from app.models import User
-from app.routers.analysis import render_partial
 from app.services.league_context import LeagueContext
+from app.templating import render_partial, templates
 
-logger = logging.getLogger(__name__)
-
+# Router-level gate so any route added here is premium-only by default
 router = APIRouter(prefix="/premium", tags=["premium"], dependencies=[Depends(require_premium)])
-templates = Jinja2Templates(directory="app/templates")
 
 
 @router.get("/fa-recs")

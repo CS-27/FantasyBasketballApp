@@ -1,5 +1,6 @@
 """Yahoo OAuth2 authentication routes."""
 
+import logging
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -13,8 +14,11 @@ from app.models import User
 from app.services.yahoo_client import (
     exchange_code_for_tokens,
     get_authorization_url,
+    get_fantasy_user_guid,
     get_yahoo_user_info,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -29,8 +33,18 @@ async def login(request: Request):
 
 
 @router.get("/callback")
-async def callback(request: Request, code: str, state: str, db: Session = Depends(get_db)):
+async def callback(
+    request: Request,
+    code: str = "",
+    state: str = "",
+    error: str = "",
+    db: Session = Depends(get_db),
+):
     """Handle Yahoo OAuth2 callback."""
+    # User clicked "Deny" (or Yahoo rejected the request)
+    if error or not code:
+        return RedirectResponse(url="/?error=login_canceled")
+
     # Verify state matches what we stored in session
     stored_state = request.session.pop("oauth_state", None)
     if not stored_state or stored_state != state:
@@ -39,24 +53,26 @@ async def callback(request: Request, code: str, state: str, db: Session = Depend
     # Exchange authorization code for tokens
     tokens = await exchange_code_for_tokens(code)
 
-    # Get yahoo_guid - prefer token response, fall back to userinfo
-    yahoo_guid = tokens["yahoo_guid"]
+    # Profile info needs OpenID permission, which the app may not have
     display_name = ""
     email = None
-
-    if not yahoo_guid:
+    user_info = {}
+    try:
         user_info = await get_yahoo_user_info(tokens["access_token"])
-        yahoo_guid = user_info.get("sub", "")
         display_name = user_info.get("name", "")
         email = user_info.get("email")
-    else:
-        # Fetch display name even if we got guid from token
+    except Exception as e:
+        logger.info("Yahoo userinfo unavailable: %s", e)
+
+    # yahoo_guid: token response, then userinfo, then the Fantasy API
+    yahoo_guid = tokens["yahoo_guid"] or user_info.get("sub", "")
+    if not yahoo_guid:
         try:
-            user_info = await get_yahoo_user_info(tokens["access_token"])
-            display_name = user_info.get("name", "")
-            email = user_info.get("email")
+            yahoo_guid = await get_fantasy_user_guid(tokens["access_token"])
         except Exception:
-            display_name = "Yahoo User"
+            logger.exception("Could not determine Yahoo GUID")
+    if not yahoo_guid:
+        return RedirectResponse(url="/?error=login_failed")
 
     token_expiry = datetime.now(timezone.utc) + timedelta(seconds=tokens["expires_in"])
 

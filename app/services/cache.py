@@ -67,7 +67,9 @@ class DataCache:
         """Return the cached value, calling fetch() and storing it on a miss."""
         value = self.get(data_type)
         if value is not None:
+            logger.debug("Cache hit: %s (league %s)", data_type, self.league_id)
             return value
+        logger.debug("Cache miss: %s (league %s)", data_type, self.league_id)
         value = fetch()
         # Don't pin empty results (often a transient API failure) for a full TTL
         if value:

@@ -18,23 +18,16 @@
     </div>
 
     <!-- Quick Stats -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" style="margin-bottom: 32px;">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" style="margin-bottom: 32px;"
+         hx-get="/analysis/summary-data"
+         hx-trigger="load"
+         hx-swap="innerHTML">
+        {% for label in ["League Rank", "Record", "Strengths", "Weaknesses"] %}
         <div class="surface-card" style="padding: 20px;">
-            <p class="stat-label">League Rank</p>
-            <p class="stat-value">--</p>
+            <p class="stat-label">{{ label }}</p>
+            <p class="stat-value" style="color: var(--text-tertiary);">--</p>
         </div>
-        <div class="surface-card" style="padding: 20px;">
-            <p class="stat-label">Record</p>
-            <p class="stat-value">-- - --</p>
-        </div>
-        <div class="surface-card" style="padding: 20px;">
-            <p class="stat-label">Strengths</p>
-            <p class="stat-value text-green">--</p>
-        </div>
-        <div class="surface-card" style="padding: 20px;">
-            <p class="stat-label">Weaknesses</p>
-            <p class="stat-value text-red">--</p>
-        </div>
+        {% endfor %}
     </div>
 
     <!-- Standings -->

@@ -68,6 +68,8 @@
         </div>
         {% else %}
         <select name="opponent"
+                aria-label="Choose an opponent"
+                onchange="history.replaceState(null, '', '/analysis/comparison' + (this.value ? '?opponent=' + encodeURIComponent(this.value) : ''))"
                 hx-get="/analysis/comparison-data"
                 hx-target="#comparison-content"
                 hx-trigger="change"

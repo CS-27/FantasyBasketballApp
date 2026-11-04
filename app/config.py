@@ -49,20 +49,6 @@ CATEGORIES = [
 # Categories where lower is better
 NEGATIVE_CATEGORIES = ["TO"]
 
-# Yahoo API stat ID mapping
-STAT_ID_MAP = {
-    "FG%": "FG%",
-    "FT%": "FT%",
-    "3PTM": "3PTM",
-    "PTS": "PTS",
-    "REB": "REB",
-    "AST": "AST",
-    "ST": "ST",
-    "BLK": "BLK",
-    "TO": "TO",
-    "DD": "DD",
-}
-
 # Basketball positions
 POSITIONS = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL", "BN", "IL", "IL+"]
 ACTIVE_POSITIONS = ["PG", "SG", "SF", "PF", "C", "G", "F", "UTIL"]

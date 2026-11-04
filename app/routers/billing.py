@@ -5,7 +5,6 @@ import logging
 import stripe
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.config import (
@@ -18,11 +17,11 @@ from app.config import (
 from app.database import get_db
 from app.dependencies import require_user, user_to_dict
 from app.models import User
+from app.templating import templates
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/billing", tags=["billing"])
-templates = Jinja2Templates(directory="app/templates")
 
 stripe.api_key = STRIPE_SECRET_KEY
 
@@ -45,12 +44,15 @@ def _get(obj, key, default=None):
 @router.get("/upgrade")
 def upgrade_page(request: Request, user: User = Depends(require_user)):
     """Pricing / upgrade page shown when a free user hits a premium feature."""
+    amount, _, period = SUBSCRIPTION_PRICE.partition("/")
     return templates.TemplateResponse(
         "upgrade.html",
         {
             "request": request,
             "user": user_to_dict(user),
             "price": SUBSCRIPTION_PRICE,
+            "price_amount": amount,
+            "price_period": period or "mo",
             "billing_enabled": _billing_enabled(),
             "status": request.query_params.get("status"),
         },

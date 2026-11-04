@@ -7,14 +7,14 @@ from app.database import get_db
 from app.models import User
 
 
-def _redirect(request: Request, url: str) -> HTTPException:
+def _redirect(request: Request, url: str, htmx_status: int) -> HTTPException:
     """Build an exception that redirects both normal and HTMX requests.
 
     HTMX follows 3xx redirects transparently and would swap the target page
-    into a partial, so HTMX requests get HX-Redirect instead.
+    into a partial, so HTMX requests get HX-Redirect with an error status.
     """
     if request.headers.get("HX-Request"):
-        return HTTPException(status_code=401, headers={"HX-Redirect": url})
+        return HTTPException(status_code=htmx_status, headers={"HX-Redirect": url})
     return HTTPException(status_code=303, headers={"Location": url})
 
 
@@ -31,14 +31,14 @@ def get_current_user(
 def require_user(request: Request, user: User | None = Depends(get_current_user)) -> User:
     """Require an authenticated user. Redirects to login if not logged in."""
     if user is None:
-        raise _redirect(request, "/auth/login")
+        raise _redirect(request, "/auth/login", htmx_status=401)
     return user
 
 
 def require_premium(request: Request, user: User = Depends(require_user)) -> User:
     """Require a premium subscription. Redirects to the upgrade page if not premium."""
     if user.subscription_status != "premium":
-        raise _redirect(request, "/billing/upgrade")
+        raise _redirect(request, "/billing/upgrade", htmx_status=403)
     return user
 
 

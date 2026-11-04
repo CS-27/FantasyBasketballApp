@@ -24,8 +24,9 @@ uvicorn app.main:app --reload
 | `app/config.py` | Env settings, categories, thresholds, cache TTLs |
 | `app/models.py` | SQLAlchemy models: `User`, `UserLeague`, `CachedData` |
 | `app/dependencies.py` | `require_user`, `require_premium`, `user_to_dict` |
+| `app/templating.py` | Shared `templates` instance and `render_partial` |
 | `app/routers/auth.py` | Yahoo OAuth2 login/callback, dev-login, logout |
-| `app/routers/analysis.py` | Free pages: standings, team analysis, comparison, rankings, cache refresh |
+| `app/routers/analysis.py` | Free pages: dashboard summary, standings, team analysis, comparison, rankings, cache refresh |
 | `app/routers/premium.py` | Premium pages: FA recs, pickup suggestions (gated by `require_premium`) |
 | `app/routers/billing.py` | Stripe upgrade page, checkout, customer portal, webhook |
 | `app/services/league_context.py` | `LeagueContext`: builds league/team objects + analyzers for a user |
@@ -42,6 +43,11 @@ uvicorn app.main:app --reload
 - **Auth gates**: use `Depends(require_user)` / `Depends(require_premium)`. They redirect normal requests (303) and HTMX requests (`HX-Redirect`).
 - **Caching**: analyzers take a `cache` and wrap API calls in `cache.get_or_fetch(key, fetch, ttl)`. `CACHE_TTL` (15 min) for stats, `STATIC_CACHE_TTL` (24 h) for settings/teams. Empty results aren't cached. `POST /analysis/refresh` clears a user's cache.
 - **Team key**: use `TeamAnalyzer.team_key` (from the team object). `league.team_key()` makes an API call.
+- **Seasons**: league IDs are prefixed with the season's game ID (`466.l.55263`). `LeagueContext` retires a stored league from a past season and rediscovers the current one.
+- **Stat totals**: use `sum_player_stats()` in `league_analyzer.py`. Yahoo returns `"-"` for missing stats, so never call `float()` on a stat without handling `ValueError`.
+
+## Yahoo API Access
+Since July 2026, Yahoo only lets approved apps use the Fantasy Sports API. Unapproved apps get `403 "This application is not authorized to perform this action"` on every endpoint, even though OAuth and token refresh succeed. Access is requested at https://sports.yahoo.com/developer/access/. If a token refresh works but fantasy calls return 403, it's this gate, not a code bug.
 
 ## Category Analysis Logic
 - **Strengths**: Categories where team ranks top 3

@@ -1,15 +1,19 @@
-# free_agent_finder.py
 """Free agent recommendations based on team needs."""
 
 import logging
 
-from app.config import (
-    CATEGORIES, NEGATIVE_CATEGORIES, POSITIONS,
-    ACTIVE_POSITIONS, DEFAULT_FA_RECOMMENDATIONS
-)
+from app.config import CATEGORIES, NEGATIVE_CATEGORIES, DEFAULT_FA_RECOMMENDATIONS
 from app.services.cache import NullCache
 
 logger = logging.getLogger(__name__)
+
+
+def _to_float(value, default=0.0):
+    """Convert a Yahoo stat value to float; Yahoo uses "-" for no stats."""
+    try:
+        return float(value)
+    except (ValueError, TypeError):
+        return default
 
 
 class FreeAgentFinder:
@@ -117,7 +121,6 @@ class FreeAgentFinder:
             return 0
 
         score = 0
-        categories = self.team_analyzer.league_analyzer.get_category_names()
 
         for weakness in weaknesses:
             cat = weakness['category']
@@ -139,9 +142,9 @@ class FreeAgentFinder:
 
         # Bonus for double-double potential
         if 'DD' in [w['category'] for w in weaknesses]:
-            pts = float(stats.get('PTS', 0))
-            reb = float(stats.get('REB', 0))
-            ast = float(stats.get('AST', 0))
+            pts = _to_float(stats.get('PTS'))
+            reb = _to_float(stats.get('REB'))
+            ast = _to_float(stats.get('AST'))
 
             # Check if player has DD potential (avg close to 10 in multiple cats)
             dd_cats = sum([

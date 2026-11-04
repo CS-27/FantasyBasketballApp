@@ -16,8 +16,8 @@
         <div class="surface-card pricing-card pricing-card--highlighted">
             <div class="plan-name" style="color: var(--accent-blue);">Premium</div>
             <div style="margin-top: 12px; margin-bottom: 28px;">
-                <span class="price">{{ price.split('/')[0] }}</span>
-                <span class="price-period">/month</span>
+                <span class="price">{{ price_amount }}</span>
+                <span class="price-period">/{{ "month" if price_period == "mo" else price_period }}</span>
             </div>
             <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px;">
                 {% for feature in ["Free agent recommendations", "Pickup and drop suggestions", "Head-to-head opponent comparison", "Everything in Free"] %}

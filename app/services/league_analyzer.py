@@ -8,6 +8,46 @@ from app.services.cache import NullCache
 logger = logging.getLogger(__name__)
 
 
+def _parse_made_attempted(value):
+    """Parse a Yahoo "made/attempted" string like "45/100" into floats."""
+    try:
+        made, attempted = str(value).split('/')
+        return float(made), float(attempted)
+    except ValueError:
+        return 0.0, 0.0
+
+
+def sum_player_stats(players, categories):
+    """Total counting stats across players and compute team FG%/FT%.
+
+    Percentages come from summed FGM/A and FTM/A, not averaged player
+    percentages. Non-numeric values (Yahoo uses "-" for no stats) are skipped.
+    """
+    totals = {cat: 0 for cat in categories}
+    fg_made = fg_att = ft_made = ft_att = 0.0
+
+    for stats in players:
+        for cat in categories:
+            if cat in ('FG%', 'FT%'):
+                continue
+            try:
+                totals[cat] += float(stats.get(cat))
+            except (ValueError, TypeError):
+                pass
+
+        made, att = _parse_made_attempted(stats.get('FGM/A', ''))
+        fg_made, fg_att = fg_made + made, fg_att + att
+        made, att = _parse_made_attempted(stats.get('FTM/A', ''))
+        ft_made, ft_att = ft_made + made, ft_att + att
+
+    if fg_att > 0:
+        totals['FG%'] = fg_made / fg_att
+    if ft_att > 0:
+        totals['FT%'] = ft_made / ft_att
+
+    return totals
+
+
 class LeagueAnalyzer:
     """Analyzes league-wide statistics and rankings."""
 
@@ -37,11 +77,16 @@ class LeagueAnalyzer:
         return self._stat_categories
 
     def get_category_names(self):
-        """Get the actual category names used in this league."""
+        """Get the scoring category names used in this league.
+
+        Display-only stats like FGM/A and FTM/A are excluded; they feed the
+        FG%/FT% calculation but aren't categories teams compete in.
+        """
         try:
             cats = self.stat_categories
             if cats:
-                return [cat.get('display_name', cat.get('name', '')) for cat in cats]
+                names = [cat.get('display_name', cat.get('name', '')) for cat in cats]
+                return [name for name in names if name and '/' not in name]
         except Exception:
             pass
         return CATEGORIES
@@ -61,68 +106,17 @@ class LeagueAnalyzer:
     def _fetch_team_roster_stats(self, team_key):
         """Fetch roster and player stats for a specific team."""
         categories = self.get_category_names()
-        totals = {cat: 0 for cat in categories}
-
-        # Track for percentage calculations
-        fg_made = 0
-        fg_att = 0
-        ft_made = 0
-        ft_att = 0
 
         try:
-            team = self.league.to_team(team_key)
-            roster = team.roster()
-
-            if not roster:
-                return totals
-
-            # Get player IDs
-            player_ids = [p.get('player_id') for p in roster if p.get('player_id')]
-
+            roster = self.league.to_team(team_key).roster()
+            player_ids = [p.get('player_id') for p in roster or [] if p.get('player_id')]
             if not player_ids:
-                return totals
-
-            # Fetch stats for all players
+                return {cat: 0 for cat in categories}
             player_stats = self.league.player_stats(player_ids, 'season')
-
-            for player in player_stats:
-                for cat in categories:
-                    value = player.get(cat)
-                    if value is not None and cat not in ['FG%', 'FT%']:
-                        try:
-                            totals[cat] += float(value)
-                        except (ValueError, TypeError):
-                            pass
-
-                # Parse FGM/A and FTM/A
-                fgma = player.get('FGM/A', '')
-                if fgma and '/' in str(fgma):
-                    parts = str(fgma).split('/')
-                    try:
-                        fg_made += float(parts[0])
-                        fg_att += float(parts[1])
-                    except (ValueError, IndexError):
-                        pass
-
-                ftma = player.get('FTM/A', '')
-                if ftma and '/' in str(ftma):
-                    parts = str(ftma).split('/')
-                    try:
-                        ft_made += float(parts[0])
-                        ft_att += float(parts[1])
-                    except (ValueError, IndexError):
-                        pass
-
-            # Calculate percentages
-            if fg_att > 0:
-                totals['FG%'] = fg_made / fg_att
-            if ft_att > 0:
-                totals['FT%'] = ft_made / ft_att
-
+            return sum_player_stats(player_stats, categories)
         except Exception as e:
             logger.warning("Could not fetch stats for team %s: %s", team_key, e)
-
-        return totals
+            return {cat: 0 for cat in categories}
 
     def get_team_stats(self):
         """Get stats for all teams in the league."""
@@ -218,6 +212,7 @@ class LeagueAnalyzer:
             losses = int(outcome.get('losses', 0) or 0)
             ties = int(outcome.get('ties', 0) or 0)
             display_data.append({
+                'team_key': standing.get('team_key'),
                 'rank': int(standing.get('rank', 0) or 0),
                 'name': standing.get('name', 'Unknown'),
                 'wins': wins,

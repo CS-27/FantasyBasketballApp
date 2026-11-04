@@ -4,42 +4,41 @@ Data endpoints are plain `def` (not `async def`) because the Yahoo client is
 blocking; FastAPI runs them in a threadpool so they don't stall the server.
 """
 
-import logging
-
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import Response
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.dependencies import require_user, user_to_dict
 from app.models import User
 from app.services.league_context import LeagueContext, NoLeagueError
-
-logger = logging.getLogger(__name__)
+from app.templating import render_partial, templates
 
 router = APIRouter(prefix="/analysis", tags=["analysis"])
-templates = Jinja2Templates(directory="app/templates")
 
 
-def render_partial(request: Request, template: str, build, defaults: dict):
-    """Render an HTMX partial, turning failures into an inline error message.
-
-    `build` returns the template context; `defaults` fills the context when
-    it fails so the template can still render.
-    """
-    try:
-        context = build()
-    except NoLeagueError as e:
-        context = {**defaults, "error": str(e)}
-    except Exception as e:
-        logger.exception("Error rendering %s", template)
-        context = {**defaults, "error": str(e)}
-    return templates.TemplateResponse(template, {"request": request, **context})
+def _page(request: Request, template: str, user: User, **extra):
+    return templates.TemplateResponse(template, {"request": request, "user": user_to_dict(user), **extra})
 
 
-def _page(request: Request, template: str, user: User):
-    return templates.TemplateResponse(template, {"request": request, "user": user_to_dict(user)})
+@router.get("/summary-data")
+def summary_data(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
+    """Dashboard summary cards: rank, record, strength/weakness counts."""
+    def build():
+        ctx = LeagueContext(user, db)
+        standings = ctx.league_analyzer.get_standings_display()
+        mine = next((s for s in standings if s.get("team_key") == ctx.team_key), None)
+        return {
+            "standing": mine,
+            "num_teams": len(standings),
+            "strengths": ctx.team_analyzer.identify_strengths(),
+            "weaknesses": ctx.team_analyzer.identify_weaknesses(),
+        }
+
+    return render_partial(
+        request, "partials/summary.html", build,
+        {"standing": None, "num_teams": 0, "strengths": [], "weaknesses": []},
+    )
 
 
 @router.get("/standings")
@@ -53,7 +52,7 @@ def standings_data(request: Request, user: User = Depends(require_user), db: Ses
     """Return standings partial (loaded via HTMX)."""
     def build():
         ctx = LeagueContext(user, db)
-        return {"standings": ctx.league_analyzer.get_standings_display()}
+        return {"standings": ctx.league_analyzer.get_standings_display(), "my_team_key": ctx.team_key}
 
     return render_partial(request, "partials/standings.html", build, {"standings": []})
 
@@ -79,9 +78,13 @@ def team_data(request: Request, user: User = Depends(require_user), db: Session 
 
 
 @router.get("/comparison")
-def comparison_page(request: Request, user: User = Depends(require_user)):
-    """League comparison page (loads detail via HTMX)."""
-    return _page(request, "comparison.html", user)
+def comparison_page(request: Request, opponent: str = "", user: User = Depends(require_user)):
+    """League comparison page (loads detail via HTMX).
+
+    `opponent` is kept in the page URL so a selected matchup survives a
+    refresh and can be bookmarked.
+    """
+    return _page(request, "comparison.html", user, opponent=opponent)
 
 
 @router.get("/comparison-data")
